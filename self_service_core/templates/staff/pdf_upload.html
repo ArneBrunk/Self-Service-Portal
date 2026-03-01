@@ -1,0 +1,265 @@
+{% extends "admin_header.html" %}
+{% block admin_content %}
+
+<section class="admin-card">
+    <div class="admin-card-header">
+        <h2>Dokumenten-Upload</h2>
+        <p>Lade PDF-Dokumente hoch, die als Wissensbasis für den Chatbot dienen.</p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="settings-form">
+        {% csrf_token %}
+
+        <div class="settings-section settings-grid-2">
+            <div>
+                <label class="field-label">PDF-Datei</label>
+                {{ upload_form.file }}
+                <p class="help-text">
+                    Unterstützt werden PDF-Dateien. Der Titel wird automatisch aus dem Dateinamen erzeugt.
+                </p>
+            </div>
+            <div>
+                <label class="field-label">Kategorie</label>
+                {{ upload_form.category }}
+                <p class="help-text">
+                    Nutze Kategorien, um Dokumente später besser zu filtern.
+                </p>
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button type="submit" class="btn-primary full-width">
+                Dokument hochladen &amp; verarbeiten
+            </button>
+        </div>
+    </form>
+</section>
+
+<section class="admin-card" style="margin-top:1.5rem;">
+    <div class="admin-card-header">
+        <h2>Hochgeladene Dokumente</h2>
+        <p>Indexierungsstatus und Qualität deiner RAG-Dokumente.</p>
+    </div>
+
+    <div class="ticket-filters">
+        <a href="?category=all" class="filter-pill {% if category_filter == 'all' %}active{% endif %}">
+            Alle Kategorien
+        </a>
+        {% for code, label in categories %}
+            <a href="?category={{ code }}" class="filter-pill {% if category_filter == code %}active{% endif %}">
+                {{ label }}
+            </a>
+        {% endfor %}
+    </div>
+
+    {% if documents %}
+        <div class="ticket-list" id="doc-list">
+            {% for doc in documents %}
+                <article class="ticket-item" data-doc-id="{{ doc.id }}">
+                    <div class="doc-main">
+                        <h3>
+                            {{ doc.title }}
+                            {% if doc.status == "indexing" %}
+                                <span class="tag tag-info doc-status-badge">
+                                    Indexing…
+                                </span>
+                            {% elif doc.status == "extracting" %}
+                                <span class="tag tag-priority-medium doc-status-badge">
+                                    Extrahiere…
+                                </span>
+                            {% elif doc.status == "indexed" %}
+                                <span class="tag tag-success doc-status-badge">
+                                    Fertig
+                                </span>
+                            {% elif doc.status == "uploaded" %}
+                                <span class="tag tag-info doc-status-badge">
+                                    Wartet…
+                                </span>
+                            {% elif doc.status == "error" %}
+                                <span class="tag tag-danger doc-status-badge">
+                                    Fehler
+                                </span>
+                            {% else %}
+                                <span class="tag tag-priority-low doc-status-badge">
+                                    {{ doc.status }}
+                                </span>
+                            {% endif %}
+                        </h3>
+
+                        <p class="ticket-meta">
+                            Kategorie:
+                            <span class="tag tag-info">{{ doc.get_category_display }}</span>
+                            · Aktualisiert: {{ doc.updated_at|date:"d.m.Y H:i" }}
+                        </p>
+
+                        <p class="ticket-meta">
+                            Fortschritt:
+                            <span class="doc-progress-text">{{ doc.index_progress }}%</span>
+                            {% if doc.indexed_chunks %}
+                                · Chunks: <span class="doc-chunks">{{ doc.indexed_chunks }}</span>
+                            {% endif %}
+                        </p>
+
+                        <div class="doc-progress-bar-wrapper">
+                            <div class="doc-progress-bar-fill doc-progress-bar"
+                                 style="width: {{ doc.index_progress }}%;"></div>
+                        </div>
+
+                        {% if doc.index_message %}
+                            <p class="ticket-meta doc-index-message">
+                                {{ doc.index_message }}
+                            </p>
+                        {% else %}
+                            <p class="ticket-meta doc-index-message"></p>
+                        {% endif %}
+                    </div>
+
+                    <div class="ticket-actions">
+                        <a href="{{ doc.file.url }}" target="_blank" class="btn-primary small">
+                            Anzeigen
+                        </a>
+
+                        <form method="post" action="{% url 'staff-pdf-reindex' doc.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-primary small">
+                                Re-Indexieren
+                            </button>
+                        </form>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="admin-subtitle">Noch keine Dokumente vorhanden.</p>
+    {% endif %}
+</section>
+
+<script>
+    (function() {
+        const STATUS_LABELS = {
+            "uploaded": "Wartet…",
+            "extracting": "Extrahiere…",
+            "indexing": "Indexing…",
+            "indexed": "Fertig",
+            "error": "Fehler"
+        };
+
+        const STATUS_CLASSES = {
+            "uploaded": "tag tag-info doc-status-badge",
+            "extracting": "tag tag-priority-medium doc-status-badge",
+            "indexing": "tag tag-info doc-status-badge",
+            "indexed": "tag tag-success doc-status-badge",
+            "error": "tag tag-danger doc-status-badge",
+            "default": "tag tag-priority-low doc-status-badge"
+        };
+
+        async function refreshDocumentStatus() {
+            try {
+                const resp = await fetch("{% url 'staff-pdf-status' %}", {
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+                if (!resp.ok) {
+                    return;
+                }
+                const data = await resp.json();
+                if (!data.documents) return;
+
+                data.documents.forEach(doc => {
+                    const row = document.querySelector('[data-doc-id="' + doc.id + '"]');
+                    if (!row) return;
+
+                    // Status-Badge
+                    const badge = row.querySelector(".doc-status-badge");
+                    const label = STATUS_LABELS[doc.status] || doc.status;
+                    const cls = STATUS_CLASSES[doc.status] || STATUS_CLASSES["default"];
+                    if (badge) {
+                        badge.textContent = label;
+                        badge.className = cls;
+                    }
+
+                    // Fortschritt
+                    const bar = row.querySelector(".doc-progress-bar");
+                    if (bar) {
+                        bar.style.width = (doc.index_progress || 0) + "%";
+                    }
+                    const progressText = row.querySelector(".doc-progress-text");
+                    if (progressText) {
+                        progressText.textContent = (doc.index_progress || 0) + "%";
+                    }
+
+                    // Chunks
+                    const chunks = row.querySelector(".doc-chunks");
+                    if (chunks && typeof doc.indexed_chunks !== "undefined") {
+                        chunks.textContent = doc.indexed_chunks;
+                    }
+
+                    // Message
+                    const msg = row.querySelector(".doc-index-message");
+                    if (msg) {
+                        msg.textContent = doc.index_message || "";
+                    }
+                });
+            } catch (e) {
+                // im Zweifel einfach still ignorieren – Dashboard soll nicht crashen
+                console.warn("Fehler beim Laden des Dokumentstatus:", e);
+            }
+        }
+
+        // nur pollen, wenn Seite sichtbar ist
+        let pollInterval = null;
+
+        function startPolling() {
+            if (!pollInterval) {
+                pollInterval = setInterval(refreshDocumentStatus, 5000);
+            }
+        }
+
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+
+        document.addEventListener("visibilitychange", function() {
+            if (document.visibilityState === "visible") {
+                startPolling();
+                refreshDocumentStatus();
+            } else {
+                stopPolling();
+            }
+        });
+
+        // beim ersten Laden
+        startPolling();
+        refreshDocumentStatus();
+    })();
+</script>
+
+<style>
+    .doc-progress-bar-wrapper {
+        margin-top: 0.4rem;
+        height: 6px;
+        background: #e5e7eb;
+        border-radius: 999px;
+        overflow: hidden;
+    }
+    .doc-progress-bar-fill {
+        height: 100%;
+        background: #2563eb;
+        border-radius: 999px;
+        transition: width 0.4s ease;
+    }
+    .doc-main {
+        max-width: 70%;
+    }
+    @media (max-width: 800px) {
+        .doc-main {
+            max-width: 100%;
+        }
+    }
+</style>
+
+{% endblock %}

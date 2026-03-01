@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Mein Profil | Self-Service{% endblock %}
+
+{% block content %}
+<div class="app-main">
+    <header class="admin-header admin-card">
+        <div>
+            <h1>Kunden-Profil</h1>
+            <p class="admin-subtitle">Welcome, {{ request.user.get_full_name|default:request.user.username }}</p>
+        </div>
+    </header>
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h2>Dein Profil</h2>
+            <p>Verwalte deine Stammdaten und deinen Account.</p>
+        </div>
+
+        <form method="post" class="settings-form">
+            {% csrf_token %}
+
+            <div class="settings-section settings-grid-2">
+                <div>
+                    <label class="field-label">Vorname</label>
+                    {{ form.first_name }}
+                </div>
+                <div>
+                    <label class="field-label">Nachname</label>
+                    {{ form.last_name }}
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">E-Mail-Adresse</label>
+                {{ form.email }}
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">Service-Level</label>
+                <div class="tag 
+                    {% if service_level == 'pro' %}
+                        tag-success
+                    {% elif service_level == 'premium' %}
+                        tag-info
+                    {% else %}
+                        tag-priority-medium
+                    {% endif %}
+                ">
+                    {% if service_level == 'pro' %}
+                        Pro
+                    {% elif service_level == 'premium' %}
+                        Premium
+                    {% else %}
+                        Free
+                    {% endif %}
+                </div>
+                <p class="help-text">
+                    Dein aktueller gebuchter Service-Level.
+                </p>
+            </div>
+
+            <div class="settings-actions" style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <a href="{% url 'chat-page' %}" class="btn-outline">
+                    Zurück zum Chat
+                </a>
+                <button type="submit" class="btn-primary">
+                    Änderungen speichern
+                </button>
+            </div>
+        </form>
+
+        <hr style="margin:1.5rem 0; border:none; border-top:1px solid #e5e7eb;">
+
+        <div class="settings-section">
+            <h3 class="settings-section-title">Account löschen</h3>
+            <p class="help-text">
+                Wenn du deinen Account löschst (deaktivierst), kannst du dich nicht mehr anmelden.
+            </p>
+
+            <form method="post" onsubmit="return confirm('Bist du sicher, dass du deinen Account löschen möchtest?');">
+                {% csrf_token %}
+                <button type="submit" name="delete_account" value="1" class="btn-outline small btn-danger">
+                    ✕ Account löschen
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

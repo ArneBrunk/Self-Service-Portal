@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+{% block title %}Support-Chat | Self-Service Portal{% endblock %}
+
+{% block content %}
+<div class="chat-layout">
+    <!-- Sidebar: Chat-Historie -->
+    <aside class="chat-sidebar">
+        <h2 class="sidebar-title">Konversationen</h2>
+        {% if sessions %}
+            <ul class="session-list">
+                {% for s in sessions %}
+                    <li class="session-item {% if selected_session and s.id == selected_session.id %}active{% endif %}">
+                        <a href="?session={{ s.id }}">
+                            <div class="session-row">
+                                <div>
+                                    <div class="session-title">Chat #{{ s.id }}</div>
+                                    <div class="session-meta">
+                                        {{ s.created_at|date:"d.m.Y H:i" }}
+                                    </div>
+                                </div>
+                                <span class="session-tag
+                                    {% if s.status == 'open' %}tag-open{% else %}tag-done{% endif %}">
+                                    {% if s.status == 'open' %}Offen{% else %}Erledigt{% endif %}
+                                </span>
+                            </div>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="sidebar-empty">
+                Noch keine Chats vorhanden.
+            </p>
+        {% endif %}
+    </aside>
+
+    <!-- Hauptbereich: Aktueller Chat -->
+    <section class="chat-main">
+        {% if selected_session %}
+            <header class="chat-main-header">
+                <div>
+                    <h1>Chat #{{ selected_session.id }}</h1>
+                    <p class="chat-main-subtitle">
+                        RAG-basierter Support-Dialog mit deiner Wissensbasis.
+                    </p>
+                </div>
+
+                <div class="chat-main-controls">
+                    <span class="session-tag {% if selected_session.status == 'open' %}tag-open{% else %}tag-done{% endif %}">
+                        {% if selected_session.status == 'open' %}Offen{% else %}Erledigt{% endif %}
+                    </span>
+
+                    <form method="post" class="end-session-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="session_id" value="{{ selected_session.id }}">
+                            <button
+                                type="submit"
+                                name="close_session"
+                                value="1"
+                                class="btn-outline small"
+                                {% if selected_session.status == "done" %}disabled{% endif %}
+                            >
+                                {% if selected_session.status == "done" %}
+                                    ✓ Beendet
+                                {% else %}
+                                   Chat beenden
+                                {% endif %}
+                            </button>
+                    </form>
+
+                    {% if selected_session.status != "done" or selected_session.rating %}
+                        <a href="{% url 'chat-page' %}?new=1" class="btn-primary-small">
+                            + Neuer Chat
+                        </a>
+                    {% endif %}
+                </div>
+            </header>
+
+            {% if active_notices %}
+            <div class="notice-banner-list">
+                {% for n in active_notices %}
+                    <div class="notice-banner notice-{{ n.severity }}">
+                        <div class="notice-header">
+                            <span class="notice-badge">
+                                {% if n.severity == "critical" %}Störung{% elif n.severity == "warning" %}Warnung{% else %}Hinweis{% endif %}
+                            </span>
+                            <span class="notice-title">{{ n.title }}</span>
+                        </div>
+                        <div class="notice-body">
+                            {{ n.body|linebreaksbr }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="chat-window">
+            {% for msg in messages %}
+                <div class="chat-row {% if msg.role == 'user' %}chat-right{% else %}chat-left{% endif %}">
+
+                    {% if msg.role != 'user' %}
+                    <div class="chat-avatar bot-avatar">
+                        🤖
+                    </div>
+                    {% endif %}
+
+                    <div class="chat-bubble {% if msg.role == 'user' %}user-bubble{% else %}bot-bubble{% endif %}">
+                        {{ msg.content|linebreaksbr }}
+
+                        {# ✅ Kundenfreundliche Quellenanzeige unter Bot-Antwort #}
+                        {% if msg.role != "user" and msg.sources %}
+                          <div class="sources-wrap">
+                            <details class="sources-accordion">
+                              <summary class="sources-summary">
+                                <span class="sources-title">Quellen anzeigen</span>
+                                <span class="sources-meta">{{ msg.sources|length }} Quelle{% if msg.sources|length != 1 %}n{% endif %}</span>
+                              </summary>
+
+                              <div class="sources-body">
+                                <ol class="sources-list">
+                                  {% for s in msg.sources %}
+                                    <li class="source-item">
+                                      <div class="source-head">
+                                        <span class="source-badge">S{{ forloop.counter }}</span>
+                                        <div class="source-head-text">
+                                          <div class="source-name">
+                                            {{ s.title|default:"Quelle" }}
+                                            {% if s.page %}<span class="source-page">– Seite {{ s.page }}</span>{% endif %}
+                                            {% if s.heading and not s.page %}<span class="source-page">– {{ s.heading }}</span>{% endif %}
+                                          </div>
+                                          {% if s.score %}
+                                            <div class="source-score">Relevanz: {{ s.score|floatformat:3 }}</div>
+                                          {% endif %}
+                                        </div>
+                                      </div>
+
+                                      {% if s.snippet %}
+                                        <div class="source-snippet">{{ s.snippet }}</div>
+                                      {% endif %}
+                                    </li>
+                                  {% endfor %}
+                                </ol>
+
+                                <p class="sources-hint">
+                                  Hinweis: Die Quellen dienen zur Nachvollziehbarkeit und stammen aus der hinterlegten Wissensbasis.
+                                </p>
+                              </div>
+                            </details>
+                          </div>
+                        {% endif %}
+                    </div>
+
+                    {% if msg.role == 'user' %}
+                    <div class="chat-avatar user-avatar">
+                        👤
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="chat-timestamp {% if msg.role == 'user' %}timestamp-right{% else %}timestamp-left{% endif %}">
+                    {{ msg.created_at|date:"H:i" }}
+                </div>
+            {% endfor %}
+            </div>
+
+            <footer class="chat-input-wrapper">
+              {% if selected_session.status == 'done' %}
+
+                  {% if not selected_session.rating %}
+                      <div class="chat-empty-state">
+                          <h3 style="margin-top:0;">Chat beendet – bitte kurz bewerten</h3>
+                          <p>Dein Feedback hilft, Antwortqualität und Wissensbasis zu verbessern.</p>
+
+                          <form method="post" class="chat-input-form" style="max-width:640px; margin:0 auto;">
+                              {% csrf_token %}
+                              <input type="hidden" name="session_id" value="{{ selected_session.id }}">
+                              <input type="hidden" name="rate_session" value="1">
+                              <input type="hidden" id="rating-value" name="rating" value="">
+
+                              <div style="font-size:30px; text-align:center; margin:10px 0;" id="rating-stars">
+                                  <span data-v="1" style="cursor:pointer;">☆</span>
+                                  <span data-v="2" style="cursor:pointer;">☆</span>
+                                  <span data-v="3" style="cursor:pointer;">☆</span>
+                                  <span data-v="4" style="cursor:pointer;">☆</span>
+                                  <span data-v="5" style="cursor:pointer;">☆</span>
+                              </div>
+
+                              <div class="field">
+                                  <textarea name="rating_text" rows="3" style="width:100%;"
+                                    placeholder="Optional: Was lief gut / was hat gefehlt?"></textarea>
+                              </div>
+
+                              <p id="rating-hint" style="text-align:center; margin:6px 0; opacity:.8;"></p>
+
+                              <div style="text-align:center;">
+                                  <button type="submit" class="btn-primary small" id="rating-submit" disabled>
+                                      Bewertung absenden
+                                  </button>
+                              </div>
+                          </form>
+                      </div>
+
+                      <script>
+                      (function() {
+                          const starsWrap = document.getElementById("rating-stars");
+                          const ratingValue = document.getElementById("rating-value");
+                          const submitBtn = document.getElementById("rating-submit");
+                          const hint = document.getElementById("rating-hint");
+                          if (!starsWrap) return;
+
+                          function render(val) {
+                              [...starsWrap.querySelectorAll("span")].forEach(s => {
+                                  const v = parseInt(s.dataset.v, 10);
+                                  s.textContent = v <= val ? "★" : "☆";
+                              });
+                              ratingValue.value = val ? String(val) : "";
+                              submitBtn.disabled = !(val >= 1 && val <= 5);
+                              hint.textContent = val ? ("Gewählt: " + val + " / 5") : "Bitte Sterne auswählen";
+                          }
+
+                          starsWrap.addEventListener("click", (e) => {
+                              const v = e.target?.dataset?.v;
+                              if (!v) return;
+                              render(parseInt(v, 10));
+                          });
+
+                          render(0);
+                      })();
+                      </script>
+
+                  {% else %}
+                      <div class="chat-empty-state">
+                          <h3 style="margin-top:0;">Danke für deine Bewertung!</h3>
+                          <p>
+                              Deine Bewertung: <strong>{{ selected_session.rating }}/5</strong>
+                              {% if selected_session.rating_text %}
+                                <br>Kommentar: "{{ selected_session.rating_text|truncatechars:160 }}"
+                              {% endif %}
+                          </p>
+
+                          <p style="text-align:center; margin-top:12px;">
+                              <a href="{% url 'chat-page' %}?new=1" class="btn-primary">
+                                  + Neuen Chat starten
+                              </a>
+                          </p>
+                      </div>
+                  {% endif %}
+
+              {% else %}
+                  <form method="post" class="chat-input-form">
+                      {% csrf_token %}
+                      <input type="hidden" name="session_id" value="{{ selected_session.id }}">
+                      <div class="field">
+                          {{ form.message.errors }}
+                          {{ form.message }}
+                      </div>
+                      <button type="submit" class="btn-primary small">
+                          Senden
+                      </button>
+                  </form>
+              {% endif %}
+            </footer>
+
+        {% else %}
+            <div class="chat-empty-state">
+                <h1>Neuen Support-Chat starten</h1>
+                <p>
+                    Stelle deine erste Frage – der Bot nutzt die hinterlegten Unternehmensdokumente,
+                    um dir eine präzise Antwort zu geben.
+                </p>
+                <form method="post" class="chat-input-form">
+                    {% csrf_token %}
+                    <div class="field">
+                        {{ form.message.errors }}
+                        {{ form.message }}
+                    </div>
+                    <button type="submit" class="btn-primary small">
+                        Chat starten
+                    </button>
+                </form>
+            </div>
+        {% endif %}
+    </section>
+</div>
+
+<style>
+/* --- Kundenfreundliche Quellenanzeige --- */
+.sources-wrap { margin-top: .65rem; }
+
+.sources-accordion {
+  border: 1px solid rgba(17,24,39,.10);
+  border-radius: 14px;
+  background: rgba(249,250,251,.75);
+  overflow: hidden;
+}
+
+.sources-summary {
+  cursor: pointer;
+  list-style: none;
+  padding: .55rem .7rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+  font-weight: 650;
+  color: #111827;
+}
+
+.sources-summary::-webkit-details-marker { display: none; }
+
+.sources-summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: .45rem;
+  transform: translateY(-1px);
+  opacity: .8;
+}
+details[open] > .sources-summary::before { content: "▾"; }
+
+.sources-title { font-size: .92rem; }
+.sources-meta { font-size: .82rem; font-weight: 550; opacity: .75; }
+
+.sources-body {
+  padding: .55rem .7rem .7rem;
+  border-top: 1px solid rgba(17,24,39,.08);
+}
+
+.sources-list { margin: 0; padding-left: 1.1rem; }
+.source-item { margin: .55rem 0; }
+
+.source-head {
+  display: flex;
+  gap: .55rem;
+  align-items: flex-start;
+}
+
+.source-badge {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: .8rem;
+  background: rgba(37,99,235,.10);
+  color: #1d4ed8;
+  flex: 0 0 auto;
+}
+
+.source-name { font-weight: 700; }
+.source-page { font-weight: 600; opacity: .75; margin-left: .25rem; }
+.source-score { font-size: .8rem; opacity: .75; margin-top: .15rem; }
+
+.source-snippet {
+  margin-top: .35rem;
+  padding: .45rem .55rem;
+  border-radius: 12px;
+  border: 1px solid rgba(17,24,39,.08);
+  background: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: .84rem;
+  white-space: pre-wrap;
+  line-height: 1.35;
+  color: #111827;
+}
+
+.sources-hint {
+  margin: .55rem 0 0;
+  font-size: .82rem;
+  opacity: .75;
+}
+</style>
+
+{% endblock %}

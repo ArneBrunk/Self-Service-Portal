@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard | Tickets{% endblock %}
+
+{% block content %}
+<div class="admin-shell">
+    <header class="admin-header admin-card">
+        <div>
+            <h1>Admin Dashboard</h1>
+            <p class="admin-subtitle">Welcome, {{ request.user.get_full_name|default:request.user.username }}</p>
+        </div>
+    </header>
+
+    <!-- Top Navigation Tabs -->
+<nav class="admin-tabs">
+  <a href="{% url 'staff-dashboard' %}" class="tab {% if active_tab == 'dashboard' %}active{% endif %}">📊 Dashboard</a>
+  <a href="{% url 'staff-tickets' %}" class="tab {% if active_tab == 'tickets' %}active{% endif %}">💬 Tickets</a>
+
+  <a href="{% url 'staff-kb' %}" class="tab {% if active_tab in 'kb gaps pdf maintenance' %}active{% endif %}">
+    🧠 Knowledge
+  </a>
+
+  <a href="{% url 'staff-quality' %}" class="tab {% if active_tab == 'quality' %}active{% endif %}">🧪 Quality</a>
+  <a href="{% url 'staff-settings' %}" class="tab {% if active_tab == 'settings' %}active{% endif %}">⚙️ Settings</a>
+</nav>
+{% if active_tab in 'kb gaps pdf maintenance' %}
+  <div class="admin-subnav">
+    <div class="admin-subtabs">
+      <a href="{% url 'staff-kb' %}" class="subtab {% if active_tab == 'kb' %}active{% endif %}">📚 KB</a>
+      <a href="{% url 'staff-gaps' %}" class="subtab {% if active_tab == 'gaps' %}active{% endif %}">🧠 Gaps</a>
+      <a href="{% url 'staff-pdf-upload' %}" class="subtab {% if active_tab == 'pdf' %}active{% endif %}">📄 PDFs</a>
+      <a href="{% url 'staff-maintenance' %}" class="subtab {% if active_tab == 'maintenance' %}active{% endif %}">⚠️ Maintenance</a>
+    </div>
+  </div>
+{% endif %}
+    {% block admin_content %}
+    {% endblock %}
+{% endblock %}
+

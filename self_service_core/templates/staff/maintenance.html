@@ -1,0 +1,215 @@
+{% extends "admin_header.html" %}
+{% block admin_content %}
+
+<section class="admin-card">
+    <div class="admin-card-header">
+        <h2>Wartung &amp; Störungen</h2>
+        <p>Verwalte aktive Hinweise, Warnungen und Störungen, die im Chat angezeigt werden.</p>
+    </div>
+
+    <form method="post" class="settings-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_notice">
+
+        <div class="settings-section">
+            <label class="field-label">Titel der Meldung</label>
+            {{ notice_form.title }}
+        </div>
+
+        <div class="settings-section">
+            <label class="field-label">Nachrichtentext</label>
+            {{ notice_form.body }}
+            <p class="help-text">
+                Dieser Text wird im Chat als Hinweis über dem Eingabefeld angezeigt.
+            </p>
+        </div>
+
+        <div class="settings-section settings-grid-2">
+            <div>
+                <label class="field-label">Modus</label>
+                {{ notice_form.mode }}
+                <p class="help-text">
+                    <strong>Prepend:</strong> Meldung vor die Antwort des Bots setzen.<br>
+                    <strong>Append:</strong> Meldung nach die Antwort des Bots setzen.<br>
+                    <strong>Override:</strong> Nur die Meldung anzeigen.
+                </p>
+            </div>
+            <div>
+                <label class="field-label">Ziel / Scope</label>
+                {{ notice_form.scope }}
+                <p class="help-text">z. B. "global" oder "billing", um bestimmte Bereiche zu markieren.</p>
+            </div>
+        </div>
+
+        <div class="settings-section settings-grid-2">
+            <div>
+                <label class="field-label">Priorität</label>
+                {{ notice_form.priority }}
+                <p class="help-text">Höhere Werte werden zuerst angezeigt.</p>
+            </div>
+            <div>
+                <label class="field-label">Aktiv?</label>
+                {{ notice_form.enabled }}
+            </div>
+        </div>
+
+        <div class="settings-section settings-grid-2">
+            <div>
+                <label class="field-label">Start</label>
+                {{ notice_form.starts_at }}
+            </div>
+            <div>
+                <label class="field-label">Ende</label>
+                {{ notice_form.ends_at }}
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button type="submit" class="btn-primary full-width">
+                Störungsmeldung speichern
+            </button>
+        </div>
+    </form>
+</section>
+
+<section class="admin-card" style="margin-top:1.5rem;">
+    <div class="admin-card-header">
+        <h2>Aktive & geplante Meldungen</h2>
+        <p>Übersicht aller aktuell definierten Hinweise, Warnungen und Störungen.</p>
+    </div>
+
+    {% if notices %}
+        <div class="ticket-list">
+            {% for n in notices %}
+                <article class="ticket-item">
+                    <div>
+                        <h3>
+                            {{ n.title }}
+                            {% if n.enabled %}
+                                <span class="tag {% if n.priority >= 90 %}tag-danger{% elif n.priority >= 70 %}tag-priority-high{% else %}tag-info{% endif %}">
+                                    Aktiv
+                                </span>
+                            {% else %}
+                                <span class="tag tag-priority-low">Inaktiv</span>
+                            {% endif %}
+                        </h3>
+                        <p class="ticket-meta">
+                            Scope: {{ n.scope }} · Modus: {{ n.get_mode_display }} ·
+                            Von: {{ n.starts_at|date:"d.m.Y H:i" }} bis {{ n.ends_at|date:"d.m.Y H:i" }}
+                        </p>
+                        <p class="ticket-meta">
+                            Priorität: {{ n.priority }}
+                        </p>
+                    </div>
+                    <div class="ticket-actions">
+                        <form method="post" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="notice_id" value="{{ n.id }}">
+                            {% if n.enabled %}
+                                <input type="hidden" name="action" value="disable_notice">
+                                <button type="submit" class="btn-outline small">Deaktivieren</button>
+                            {% else %}
+                                <input type="hidden" name="action" value="enable_notice">
+                                <button type="submit" class="btn-outline small">Aktivieren</button>
+                            {% endif %}
+                        </form>
+
+                        {% if request.user.staff.role == "admin" %}
+                            <form method="post" style="display:inline; margin-left:0.5rem;">
+                                {% csrf_token %}
+                                <input type="hidden" name="notice_id" value="{{ n.id }}">
+                                <input type="hidden" name="action" value="delete_notice">
+                                <button type="submit" class="btn-outline small">
+                                    Löschen
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="admin-subtitle">Noch keine Meldungen definiert.</p>
+    {% endif %}
+</section>
+
+<section class="admin-card" style="margin-top:1.5rem;">
+    <div class="admin-card-header">
+        <h2>Maintenance-Vorlagen</h2>
+        <p>Lege Vorlagen für wiederkehrende Wartungen oder Störungen an.</p>
+    </div>
+
+    <div class="settings-section">
+        <form method="post" class="settings-form" style="margin-bottom:1.5rem;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_template">
+
+            <div class="settings-grid-2">
+                <div>
+                    <label class="field-label">Titel</label>
+                    {{ template_form.title }}
+                </div>
+                <div>
+                    <label class="field-label">Schweregrad</label>
+                    {{ template_form.severity }}
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">Text</label>
+                {{ template_form.body }}
+            </div>
+
+            <div class="settings-grid-2">
+                <div>
+                    <label class="field-label">Standard-Modus</label>
+                    {{ template_form.default_mode }}
+                </div>
+                <div>
+                    <label class="field-label">Standard-Scope</label>
+                    {{ template_form.default_scope }}
+                </div>
+            </div>
+
+            <div class="settings-actions">
+                <button type="submit" class="btn-primary full-width">
+                    Vorlage speichern
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% if templates %}
+        <div class="ticket-list">
+            {% for t in templates %}
+                <article class="ticket-item">
+                    <div>
+                        <h3>
+                            {{ t.title }}
+                            <span class="tag {% if t.severity == 'outage' %}tag-danger{% elif t.severity == 'warning' %}tag-priority-high{% else %}tag-info{% endif %}">
+                                {{ t.get_severity_display }}
+                            </span>
+                        </h3>
+                        <p class="ticket-meta">
+                            Standard-Modus: {{ t.get_default_mode_display }} · Scope: {{ t.default_scope }}
+                        </p>
+                    </div>
+                    <div class="ticket-actions">
+                        <form method="post" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="template_id" value="{{ t.id }}">
+                            <input type="hidden" name="action" value="spawn_from_template">
+                            <button type="submit" class="btn-outline small">
+                                Meldung aus Vorlage anlegen
+                            </button>
+                        </form>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="admin-subtitle">Noch keine Vorlagen vorhanden.</p>
+    {% endif %}
+</section>
+
+{% endblock %}

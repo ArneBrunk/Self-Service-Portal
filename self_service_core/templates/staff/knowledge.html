@@ -1,0 +1,107 @@
+{% extends "admin_header.html" %}
+{% block admin_content %}
+
+<section class="admin-card">
+    <div class="admin-card-header">
+        <h2>Knowledge Base</h2>
+        <p>Erstelle und verwalte Wissenseinträge, die dein Bot für Antworten verwendet.</p>
+    </div>
+
+    <form method="post" class="settings-form">
+        {% csrf_token %}
+
+        <div class="settings-section settings-grid-2">
+            <div>
+                <label class="field-label">Titel</label>
+                {{ form.title }}
+            </div>
+            <div>
+                <label class="field-label">Tags</label>
+                {{ form.tags }}
+                <p class="help-text">Mehrfachauswahl möglich.</p>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <label class="field-label">Inhalt (Markdown)</label>
+            {{ form.body_md }}
+            <p class="help-text">
+                Nutze Überschriften, Listen und Links für besser strukturierte Antworten.
+            </p>
+        </div>
+
+        <div class="settings-actions" style="display:flex; gap:0.75rem;">
+            <button type="submit" name="save" class="btn-primary">
+                Als Entwurf speichern
+            </button>
+
+            {% if request.user.staff.role == "admin" %}
+                <button type="submit" name="review" class="btn-outline small">
+                    Zur Review freigeben
+                </button>
+                <button type="submit" name="publish" class="btn-outline small">
+                    Direkt veröffentlichen
+                </button>
+            {% endif %}
+        </div>
+    </form>
+</section>
+
+<section class="admin-card" style="margin-top: 1.5rem;">
+    <div class="admin-card-header">
+        <h2>Bestehende Wissenseinträge</h2>
+        <p>Filtere nach Status und behalte den Überblick über deine Knowledge Base.</p>
+    </div>
+
+    <div class="ticket-filters">
+        <a href="?status=all" class="filter-pill {% if status_filter == 'all' %}active{% endif %}">
+            Alle
+        </a>
+        <a href="?status=draft" class="filter-pill {% if status_filter == 'draft' %}active{% endif %}">
+            Entwürfe
+        </a>
+        <a href="?status=review" class="filter-pill {% if status_filter == 'review' %}active{% endif %}">
+            In Review
+        </a>
+        <a href="?status=published" class="filter-pill {% if status_filter == 'published' %}active{% endif %}">
+            Veröffentlicht
+        </a>
+    </div>
+
+    {% if kb_entries %}
+        <div class="ticket-list">
+            {% for kb in kb_entries %}
+                <article class="ticket-item">
+                    <div>
+                        <h3>{{ kb.title }}</h3>
+                        <p class="ticket-meta">
+                            Status:
+                            <span class="tag {% if kb.status == 'published' %}tag-success{% elif kb.status == 'review' %}tag-info{% else %}tag-priority-low{% endif %}">
+                                {{ kb.get_status_display }}
+                            </span>
+                            · Version {{ kb.version }}
+                            · Aktualisiert: {{ kb.updated_at|date:"d.m.Y H:i" }}
+                        </p>
+
+                        {% if kb.tags %}
+                            <div class="ticket-tags">
+                                {% for tag in kb.tags %}
+                                    <span class="tag tag-info">{{ tag }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="ticket-actions">
+                        <a href="{% url 'admin:knowledge_kbentry_change' kb.id %}" class="btn-outline small">
+                            Im Admin bearbeiten
+                        </a>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="admin-subtitle">Noch keine Wissenseinträge vorhanden.</p>
+    {% endif %}
+</section>
+
+{% endblock %}

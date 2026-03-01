@@ -1,0 +1,68 @@
+{% extends "admin_header.html" %}
+{% block admin_content %}
+
+<section class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <h2>Knowledge Gap Backlog</h2>
+      <p>Offene Wissenslücken aus Eskalationen &amp; Nicht-Antworten (aggregiert).</p>
+    </div>
+  </div>
+
+  <form method="get" style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:end;">
+    <label style="display:flex; flex-direction:column; gap:.25rem;">
+      <span class="help-text ">Status</span>
+      <select name="status" class="input">
+        <option value="open" {% if status == "open" %}selected{% endif %}>Open</option>
+        <option value="in_progress" {% if status == "in_progress" %}selected{% endif %}>In progress</option>
+        <option value="resolved" {% if status == "resolved" %}selected{% endif %}>Resolved</option>
+        <option value="ignored" {% if status == "ignored" %}selected{% endif %}>Ignored</option>
+      </select>
+    </label>
+
+    <label style="display:flex; flex-direction:column; gap:.25rem; min-width:260px;">
+      <span class="help-text">Suche</span>
+      <input name="q" value="{{ q }}" class="input" placeholder="z.B. Passwort zurücksetzen…" />
+    </label>
+
+    <button class="btn-primary small" type="submit">Filtern</button>
+  </form>
+
+  <div style="margin-top:1rem;">
+    {% if gaps %}
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="text-align:left; border-bottom:1px solid #e5e7eb;">
+            <th style="padding:.5rem;">Gap</th>
+            <th style="padding:.5rem;">Count</th>
+            <th style="padding:.5rem;">Last seen</th>
+            <th style="padding:.5rem;">Reason</th>
+            <th style="padding:.5rem;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in gaps %}
+          <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:.6rem; vertical-align:top;">
+              <a href="{% url 'staff-gap-detail' g.id %}" style="font-weight:700; color:#ffffff; text-decoration:none;">
+                {{ g.title|default:"(ohne Titel)" }}
+              </a>
+              <div class="help-text" style="margin-top:.25rem;">
+                {{ g.representative_question|truncatechars:140 }}
+              </div>
+            </td>
+            <td style="padding:.6rem;">{{ g.count }}</td>
+            <td style="padding:.6rem;">{{ g.last_seen_at|date:"d.m.Y H:i" }}</td>
+            <td style="padding:.6rem;">{{ g.reason_top }}</td>
+            <td style="padding:.6rem;">{{ g.status }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="help-text" style="margin-top:1rem;">Keine Einträge für diesen Filter.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "admin_header.html" %}
+{% block admin_content %}
+    <section class="admin-card">
+        <header class="admin-card-header">
+            <h2>Support Tickets</h2>
+            <p>Manage customer conversations and tickets.</p>
+        </header>
+
+        <!-- Filter Pills -->
+        <div class="ticket-filters">
+
+            <a href="?status=escalated" class="filter-pill {% if status_filter == 'escalated' %}active{% endif %}">
+                Escalated ({{ counts.escalated }})
+            </a>
+            <a href="?status=in_progress" class="filter-pill {% if status_filter == 'in_progress' %}active{% endif %}">
+                In Progress ({{ counts.in_progress }})
+            </a>
+            <a href="?status=solved" class="filter-pill {% if status_filter == 'solved' %}active{% endif %}">
+                Solved ({{ counts.solved }})
+            </a>
+            <a href="?status=all" class="filter-pill {% if status_filter == 'all' %}active{% endif %}">
+                All ({{ counts.all }})
+            </a>
+        </div>
+
+        <!-- Ticket List -->
+        <div class="ticket-list">
+             {% for t in tickets %}
+                <article class="ticket-item">
+                    <div>
+                        <h3>
+                            {{ t.title }}
+                            {% if t.exported %}
+                                <span class="tag tag-info">Extern</span>
+                            {% endif %}
+                            {% if t.status == 'solved' %}
+                                <span class="tag tag-success">Erledigt</span>
+                            {% endif %}
+                        </h3>
+                        <p class="ticket-meta">
+                            Status: {{ t.get_status_display }} ·
+                            Prio: {{ t.get_priority_display }} ·
+                            Erstellt: {{ t.created_at|date:"d.m.Y H:i" }}
+                        </p>
+                        {% if t.external_id %}
+                            <p class="ticket-meta">
+                                Externe Ticket-ID: {{ t.external_id }}
+                            </p>
+                        {% endif %}
+                    </div>
+
+                    <div class="ticket-actions">
+                        {% if t.status == 'escalated' and not t.exported %}
+                            <form method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="ticket_id" value="{{ t.id }}">
+                                <input type="hidden" name="action" value="export">
+                                <button type="submit" class="btn-primary small">
+                                    An Ticket-System senden
+                                </button>
+                            </form>
+                        {% endif %}
+                        {% if t.exported and t.status != 'solved' %}
+                            <form method="post" style="display:inline; margin-left:0.5rem;">
+                                {% csrf_token %}
+                                <input type="hidden" name="ticket_id" value="{{ t.id }}">
+                                <input type="hidden" name="action" value="close_external">
+                                <button type="submit" class="btn-outline small btn-danger">
+                                    Extern schließen
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} | Self-Service Chatbot{% endblock %}
+
+{% block content %}
+<section class="hero"> 
+  <canvas id="ai-network"></canvas> 
+    <div class="hero-left ">
+        <h1>{{ company.name }} – intelligenter Self-Service</h1>
+        <p>
+            {{ company.tagline }}
+        </p>
+        <ul class="hero-bullets">
+            <li>✨ Schnelle, konsistente Antworten</li>
+            <li>📄 Direkte Nutzung deiner Wissensbasis</li>
+            <li>🔒 Sichere Authentifizierung für Kunden & Mitarbeitende</li>
+        </ul>
+        <div class="hero-ctas">
+            {% if request.user.is_authenticated %}
+                 {% if request.user.is_staff %}
+                  <a href="{% url 'staff-dashboard' %}" class="btn-primary btn-lg">
+                    Zum Admin-Dashboard
+                  </a>
+                  {% else %}
+                  <a href="{% url 'landing' %}" class="btn-primary btn-lg">
+                    Zum Chat
+                  </a>
+                  {% endif %}    
+              {% else %}
+                <a href="{% url 'register' %}" class="btn-primary btn-lg">Jetzt registrieren</a>
+                <a href="{% url 'login' %}" class="btn-primary btn-lg">Ich habe schon einen Account</a>
+            {% endif %}
+        </div>
+    </div>
+        {% if request.user.is_authenticated %}
+            
+        {% else %}
+        <div class="hero-right">
+            <div class="glass-card">
+                <h2>Kunden-Login</h2>
+                <p class="card-subtitle">Melde dich an, um den Support-Chat zu starten.</p>
+                <div class="card-actions">
+                    <a href="{% url 'login' %}" class="btn-primary full-width">Login</a>
+                    <a href="{% url 'register' %}" class="btn-outline full-width">Registrieren</a>
+                </div>
+                <div class="card-footer">
+                    <span class="pill pill-soft">24/7 verfügbar</span>
+                    <span class="pill pill-soft">RAG-basierte Antworten</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+</section>
+
+<script>
+  (function () {
+    const canvas = document.getElementById('ai-network');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    let width, height, particles;
+
+    const config = {
+      particleCount: 70,      // Anzahl der Punkte
+      maxVelocity: 0.3,       // Geschwindigkeit
+      connectionDist: 140,    // Abstand für Linien
+      particleSize: 3,
+      lineOpacity: 0.35
+    };
+
+    function resize() {
+      width = canvas.offsetWidth;
+      height = canvas.offsetHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function createParticles() {
+      particles = [];
+      for (let i = 0; i < config.particleCount; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * config.maxVelocity * 2,
+          vy: (Math.random() - 0.5) * config.maxVelocity * 2
+        });
+      }
+    }
+
+    function update() {
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // sanft an den Rändern „abprallen“
+        if (p.x <= 0 || p.x >= width) p.vx *= -1;
+        if (p.y <= 0 || p.y >= height) p.vy *= -1;
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Punkte
+      for (const p of particles) {
+        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 12);
+        gradient.addColorStop(0, 'rgba(60, 60, 60, 0.9)');
+        gradient.addColorStop(1, 'rgba(148, 163, 184, 0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, config.particleSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Linien zwischen nahen Punkten
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const p1 = particles[i];
+          const p2 = particles[j];
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < config.connectionDist) {
+        const alpha = (1 - dist / config.connectionDist) * config.lineOpacity;
+        ctx.strokeStyle = `rgba(20, 20, 20, ${alpha})`; // dunkles Grau
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
+
+        }
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // init
+    resize();
+    createParticles();
+    loop();
+
+    window.addEventListener('resize', () => {
+      resize();
+      createParticles();
+    });
+  })();
+</script>
+{% endblock %}

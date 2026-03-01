@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Login | Self-Service Chatbot{% endblock %}
+
+{% block content %}
+<section class="auth-wrapper">
+    <div class="auth-card">
+        <h1>Willkommen zurück</h1>
+        <p class="card-subtitle">Melde dich an, um deinen Support-Chat fortzusetzen.</p>
+
+        <form method="post" class="auth-form">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <div class="field">
+                {{ form.username.label_tag }}
+                {{ form.username }}
+                {{ form.username.errors }}
+            </div>
+            <div class="field">
+                {{ form.password.label_tag }}
+                {{ form.password }}
+                {{ form.password.errors }}
+            </div>
+            <button type="submit" class="btn-primary btn-lg">Login</button>
+        </form>
+
+        <p class="auth-switch">
+            Noch kein Konto?
+            <a href="{% url 'register' %}">Jetzt registrieren</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

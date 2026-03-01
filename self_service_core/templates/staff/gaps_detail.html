@@ -1,0 +1,121 @@
+{% extends "admin_header.html" %}
+{% block admin_content %}
+
+<section class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <h2>Gap #{{ gap.id }}</h2>
+      <p class="help-text">{{ gap.representative_question }}</p>
+    </div>
+  </div>
+
+  <form method="post" action="{% url 'staff-gap-update' gap.id %}" style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:end;">
+    {% csrf_token %}
+
+    <label style="display:flex; flex-direction:column; gap:.25rem; min-width:280px;">
+      <span class="help-text">Titel</span>
+      <input name="title" value="{{ gap.title }}" class="input" />
+    </label>
+
+    <label style="display:flex; flex-direction:column; gap:.25rem;">
+      <span class="help-text">Status</span>
+      <select name="status" class="input">
+        <option value="open" {% if gap.status == "open" %}selected{% endif %}>Open</option>
+        <option value="in_progress" {% if gap.status == "in_progress" %}selected{% endif %}>In progress</option>
+        <option value="resolved" {% if gap.status == "resolved" %}selected{% endif %}>Resolved</option>
+        <option value="ignored" {% if gap.status == "ignored" %}selected{% endif %}>Ignored</option>
+      </select>
+    </label>
+
+    <label style="display:flex; flex-direction:column; gap:.25rem;">
+      <span class="help-text">Priority</span>
+      <input name="priority" type="number" value="{{ gap.priority }}" class="input" style="width:120px;" />
+    </label>
+
+    <label style="display:flex; flex-direction:column; gap:.25rem;">
+      <span class="help-text">Assigned to (User ID)</span>
+      <input name="assigned_to_id" value="{{ gap.assigned_to_id|default:'' }}" class="input" style="width:140px;" placeholder="z.B. 3" />
+    </label>
+
+    <button class="btn-primary small" type="submit">Speichern</button>
+  </form>
+    <div style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+    {% if gap.linked_kb_entry_id %}
+        <span class="tag tag-success">KB verknüpft: #{{ gap.linked_kb_entry_id }}</span>
+        {# Optional: Link auf deine KB-Admin-Seite / KB-Detailseite #}
+        {# <a class="btn-secondary small" href="{% url 'kb-edit' gap.linked_kb_entry_id %}">KB öffnen</a> #}
+    {% else %}
+        <form method="post" action="{% url 'staff-gap-create-kb' gap.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-primary small">
+            + KB-Entwurf aus Gap erstellen
+        </button>
+        </form>
+    {% endif %}
+
+    <a class="btn-primary small" href="{% url 'staff-gaps' %}">← Zurück zur Liste</a>
+    </div>
+  <div style="margin-top:1rem; display:flex; gap:1.5rem; flex-wrap:wrap;">
+    <div class="help-text">
+      <strong>Count:</strong> {{ gap.count }}<br/>
+      <strong>Last seen:</strong> {{ gap.last_seen_at|date:"d.m.Y H:i" }}<br/>
+      <strong>Top reason:</strong> {{ gap.reason_top }}
+    </div>
+
+    <div class="help-text">
+      <strong>Reason-Verteilung:</strong><br/>
+      {% for r in reason_counts %}
+        {{ r.reason }}: {{ r.c }}<br/>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="admin-card" style="margin-top:1.25rem;">
+  <div class="admin-card-header">
+    <div>
+      <h2>Events (letzte 50)</h2>
+      <p class="help-text">Konkrete Anfragen inkl. „knapp verfehlter Quellen“.</p>
+    </div>
+  </div>
+
+  {% for e in events %}
+    <article style="border:1px solid #e5e7eb; border-radius:14px; padding:.85rem; margin-bottom:.75rem; background:#fff;">
+      <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+        <div>
+          <span class="ticket-meta">{{ e.reason }}</span>
+          <span class="ticket-meta">· {{ e.created_at|date:"d.m.Y H:i" }}</span>
+        </div>
+        <div class="ticket-meta">
+          score={{ e.best_score|default:"–" }} / thr={{ e.threshold|default:"–" }}
+          {% if e.ticket_id %} · Ticket #{{ e.ticket_id }}{% endif %}
+          {% if e.session_id %} · Session #{{ e.session_id }}{% endif %}
+        </div>
+      </div>
+
+      <div style="margin-top:.5rem;">
+        <div class="ticket-meta"><strong>Question (redacted):</strong></div>
+        <div style="white-space:pre-wrap; color:#111827;">{{ e.question_redacted }}</div>
+      </div>
+
+      {% if e.top_sources %}
+        <details style="margin-top:.6rem;">
+          <summary class="ticket-meta">Knapp verfehlte Quellen (Top {{ e.top_sources|length }})</summary>
+          <ol style="margin:.6rem 0 0; padding-left:1.25rem;">
+            {% for s in e.top_sources %}
+              <li style="margin-bottom:.45rem;">
+                <span class="ticket-meta">{{ s.title }}</span>
+                <span class="ticket-meta">({{ s.source_kind }} #{{ s.source_id }}, score {{ s.score|floatformat:3 }})</span>
+                {% if s.page %}<span class="ticket-meta">· Seite {{ s.page }}</span>{% endif %}
+              </li>
+            {% endfor %}
+          </ol>
+        </details>
+      {% endif %}
+    </article>
+  {% empty %}
+    <p class="ticket-meta">Keine Events vorhanden.</p>
+  {% endfor %}
+</section>
+
+{% endblock %}

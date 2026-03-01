@@ -1,0 +1,290 @@
+{% extends "admin_header.html" %}
+{% block admin_content %}
+
+<section class="admin-card">
+    <div class="admin-card-header">
+        <h2>Übersicht</h2>
+        <p>Wichtige Kennzahlen aus Tickets, Chats und Kunden.</p>
+    </div>
+
+    <div class="stats-grid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;">
+        <!-- Tickets gesamt -->
+        <div class="stat-card">
+            <h3>Tickets gesamt</h3>
+            <p class="stat-value">{{ total_tickets }}</p>
+            <p class="ticket-meta">Alle Tickets im System (historisch).</p>
+        </div>
+
+        <!-- Aktuelle Ticketverteilung -->
+        <div class="stat-card">
+            <h3>Aktuelle Tickets</h3>
+            <p class="stat-value">
+                {{ tickets_by_status.escalated|default:0 }}
+            </p>
+            <p class="ticket-meta">
+                Eskaliert: {{ tickets_by_status.escalated|default:0 }} ·
+                In Bearbeitung: {{ tickets_by_status.in_progress|default:0 }} ·
+                Gelöst: {{ tickets_by_status.solved|default:0 }}
+            </p>
+        </div>
+
+        <!-- Kunden -->
+        <div class="stat-card">
+            <h3>Kunden</h3>
+            <p class="stat-value">{{ total_customers }}</p>
+            <p class="ticket-meta">Registrierte Endkunden im System.</p>
+        </div>
+
+        <!-- Chats heute + Zeitraumwerte -->
+        <div class="stat-card">
+            <h3>Chats heute</h3>
+            <p class="stat-value">{{ chats_today }}</p>
+            <p class="ticket-meta">
+                Letzte 7 Tage: {{ chats_last_7_days }} · 30 Tage: {{ chats_last_30_days }}
+            </p>
+        </div>
+
+        <!-- Chats gesamt -->
+        <div class="stat-card">
+            <h3>Chats gesamt</h3>
+            <p class="stat-value">{{ total_chats }}</p>
+            <p class="ticket-meta">Alle Chat-Sessions seit Start.</p>
+        </div>
+
+        <!-- Chat-Bewertung -->
+        <div class="stat-card">
+            <h3>Chat-Bewertung</h3>
+            <p class="stat-value">
+                {{ rating_avg|default:"–" }}<span class="stat-suffix">/ 5</span>
+            </p>
+            <p class="ticket-meta">
+                Bewertungen: {{ rating_count|default:0 }} · Quote: {{ rating_rate|default:0 }}%
+            </p>
+        </div>
+
+        <!-- Eskalierte Tickets 30 Tage -->
+        <div class="stat-card">
+            <h3>Eskalierte Tickets (30 Tage)</h3>
+            <p class="stat-value">{{ escalated_last_30 }}</p>
+            <p class="ticket-meta">
+                Eskalationen aus Chat-Sessions im letzten Monat.
+            </p>
+        </div>
+
+        <!-- Quality Score -->
+        <div class="stat-card stat-card-accent">
+            <h3>Quality Score</h3>
+            {% if quality_score %}
+                <p class="stat-value">
+                    {{ quality_score }}<span class="stat-suffix">%</span>
+                </p>
+                <p class="ticket-meta">
+                    Anteil der Chats, die ohne menschliche Eskalation gelöst wurden
+                    (letzte 30 Tage).
+                </p>
+                <p class="ticket-meta">
+                    Basis: {{ chats_last_30_days }} Chats · {{ escalated_last_30 }} Eskalationen
+                </p>
+            {% else %}
+                <p class="stat-value">–</p>
+                <p class="ticket-meta">Noch zu wenige Daten für einen Score.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;margin-top:1.5rem;">
+        <section class="admin-card">
+            <div class="admin-card-header">
+                <h2>Chat-Aktivität (letzte 7 Tage)</h2>
+                <p>Verlauf der Chat-Sessions pro Tag.</p>
+            </div>
+            <canvas id="chatsPerDayChart" height="120"></canvas>
+        </section>
+
+        <section class="admin-card">
+            <div class="admin-card-header">
+                <h2>Tickets nach Status</h2>
+                <p>Aktuelle Verteilung der Tickets auf Status.</p>
+            </div>
+            <canvas id="ticketsByStatusChart" height="120"></canvas>
+        </section>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;margin-top:1.5rem;">
+    <!-- Bewertung-Verteilung -->
+    <section class="admin-card">
+        <div class="admin-card-header">
+            <h2>Chat-Bewertungen (Verteilung)</h2>
+            <p>Verteilung der abgegebenen Sternebewertungen.</p>
+        </div>
+        <canvas id="chatRatingsChart" height="120"></canvas>
+    </section>
+
+    <!-- Letzte Bewertungen -->
+    <section class="admin-card">
+        <div class="admin-card-header">
+            <h2>Letzte Chat-Bewertungen</h2>
+            <p>Neueste Bewertungen inkl. Session und Kommentar.</p>
+        </div>
+
+        <div style="overflow:auto;">
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="text-align:left; border-bottom:1px solid rgba(255,255,255,0.15);">
+                        <th style="padding:8px;">Zeit</th>
+                        <th style="padding:8px;">User</th>
+                        <th style="padding:8px;">Session</th>
+                        <th style="padding:8px;">Sterne</th>
+                        <th style="padding:8px;">Kommentar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for r in latest_ratings %}
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+                        <td style="padding:8px;">{{ r.rated_at|date:"d.m.Y H:i" }}</td>
+                        <td style="padding:8px;">{{ r.user.username|default:"—" }}</td>
+                        <td style="padding:8px;">#{{ r.id }}</td>
+                        <td style="padding:8px;">{{ r.rating }}/5</td>
+                        <td style="padding:8px;">{{ r.rating_text|default:"—"|truncatechars:80 }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" style="padding:10px; opacity:.85;">Noch keine Bewertungen vorhanden.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // GLOBAL: Schriftfarbe auf Weiß
+    Chart.defaults.color = "#ffffff";
+
+    // Daten aus Django-Context
+    const chatsLabels = {{ chart_day_labels|safe }};
+    const chatsData = {{ chart_day_data|safe }};
+    const ticketsByStatus = {
+        "escalated": {{ tickets_by_status.escalated|default:0 }},
+        "in_progress": {{ tickets_by_status.in_progress|default:0 }},
+        "solved": {{ tickets_by_status.solved|default:0 }},
+    };
+
+    // Gemeinsame Achsenoptionen
+    const axisOptions = {
+        ticks: {
+            color: "#ffffff",
+            stepSize: 1,
+            callback: (value) => Number.isInteger(value) ? value : null,
+        },
+        grid: {
+            color: "rgba(255,255,255,0.1)",
+        },
+        beginAtZero: true,
+    };
+
+    // ===== LINE-CHART (Chats pro Tag) =====
+    const ctxChats = document.getElementById('chatsPerDayChart').getContext('2d');
+    new Chart(ctxChats, {
+        type: 'line',
+        data: {
+            labels: chatsLabels,
+            datasets: [{
+                label: 'Chats pro Tag (Sessions)',
+                data: chatsData,
+                tension: 0.3,
+                fill: false,
+                borderWidth: 2,
+                borderColor: '#3b82f6',          // Blau
+                pointBackgroundColor: '#3b82f6', // Punkt: blau
+                pointBorderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    labels: { color: "#ffffff" }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: "#ffffff" },
+                    grid: { color: "rgba(255,255,255,0.1)" }
+                },
+                y: axisOptions
+            }
+        }
+    });
+
+    // ===== BAR-CHART (Tickets nach Status) =====
+    const ctxTickets = document.getElementById('ticketsByStatusChart').getContext('2d');
+    new Chart(ctxTickets, {
+        type: 'bar',
+        data: {
+            labels: ['Eskaliert', 'In Bearbeitung', 'Gelöst'],
+            datasets: [{
+                label: 'Tickets',
+                data: [
+                    ticketsByStatus.escalated || 0,
+                    ticketsByStatus.in_progress || 0,
+                    ticketsByStatus.solved || 0,
+                ],
+                backgroundColor: "#3b82f6cc",  // halbtransparentes Blau
+                borderColor: "#3b82f6",        // Blau
+                borderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    labels: { color: "#ffffff" }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: "#ffffff" },
+                    grid: { color: "rgba(255,255,255,0.1)" }
+                },
+                y: axisOptions
+            }
+        }
+    });
+</script>
+
+
+<style>
+    .stat-card {
+        background: #f9fafb;
+        border-radius: 0.9rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    }
+    .stat-card h3 {
+        margin: 0 0 0.3rem;
+        font-size: 0.9rem;
+        color: #6b7280;
+    }
+    .stat-value {
+        margin: 0.1rem 0;
+        font-size: 1.6rem;
+        font-weight: 600;
+        color: #111827;
+    }
+    .stat-suffix {
+        font-size: 0.9rem;
+        margin-left: 0.1rem;
+        color: #6b7280;
+    }
+    .stat-card-accent {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+</style>
+
+{% endblock %}

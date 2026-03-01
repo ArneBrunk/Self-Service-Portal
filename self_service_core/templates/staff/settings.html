@@ -1,0 +1,266 @@
+{% extends "admin_header.html" %}
+{% block admin_content %}
+    <!-- Company Branding Card -->
+    <section class="admin-card">
+        <header class="admin-card-header">
+            <h2>Company Branding</h2>
+            <p>Customize the company information and branding for your service bot.</p>
+        </header>
+
+        <form method="post" enctype="multipart/form-data" class="settings-form">
+            {% csrf_token %}
+            <input type="hidden" name="save_company" value="1">
+
+            <div class="settings-section">
+                <h3 class="field-label">Company Icon</h3>
+               <div class="company-icon-row">
+                    <div class="company-icon-preview">
+                        {% if company_form.instance.icon %}
+                            <img src="{{ company_form.instance.icon.url }}" alt="Company Icon">
+                        {% else %}
+                            <span class="icon-placeholder">🏢</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="company-icon-upload">
+                        <label class="file-upload-btn">
+                            <span>Icon ändern</span>
+                            <!-- eigenes File-Input mit dem richtigen Namen/ID -->
+                            <input
+                                type="file"
+                                name="{{ company_form.icon.html_name }}"
+                                id="{{ company_form.icon.id_for_label }}"
+                                accept="image/png,image/jpeg"
+                                class="file-input-native"
+                            >
+                        </label>
+                        <p class="help-text">PNG/JPG bis 2MB</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">Company Name</label>
+                {{ company_form.name }}
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">Company Description</label>
+                {{ company_form.description }}
+            </div>
+
+            <div class="settings-section settings-grid-2">
+                <div>
+                    <label class="field-label">Support Email</label>
+                    {{ company_form.support_email }}
+                </div>
+                <div>
+                    <label class="field-label">Support Phone</label>
+                    {{ company_form.support_phone }}
+                </div>
+            </div>
+
+            <div class="settings-actions">
+                <button type="submit" class="btn-primary full-width">
+                    Save Company Settings
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Chatbot Configuration Card -->
+    <section class="admin-card" style="margin-top: 1.5rem;">
+        <header class="admin-card-header">
+            <h2>Chatbot Configuration</h2>
+            <p>Configure the behavior and personality of your AI chatbot.</p>
+        </header>
+
+        <form method="post" class="settings-form">
+            {% csrf_token %}
+            {% if bot_form.errors %}
+            <div class="form-errors">
+                {{ bot_form.errors }}
+            </div>
+            {% endif %}
+
+            <input type="hidden" name="save_bot" value="1">
+
+            <div class="settings-section settings-grid-2">
+                <div>
+                    <label class="field-label">Bot Name</label>
+                    {{ bot_form.bot_name }}
+                </div>
+                <div>
+                    <label class="field-label">Bot Role</label>
+                    {{ bot_form.bot_role }}
+                </div>
+            </div>
+            <div class="settings-section">
+                <label class="field-label">OpenAI API Key</label>
+                {{ bot_form.openai_api_key }}
+                <p class="help-text">
+                    Wird verschlüsselt gespeichert. Der Key ist im Klartext nicht abrufbar.
+                </p>
+            </div>
+
+          <div class="settings-section">
+            <h3 class="field-label" style="margin-bottom:.5rem;">Prompt-Konfiguration (RAG / No-RAG)</h3>
+            <p class="help-text">
+                Pflege getrennte Prompts für RAG (mit Quellenpflicht) und No-RAG (ohne Quellenmarker).
+            </p>
+
+            <div class="settings-section" style="margin-top: 1rem;">
+                <label class="field-label">System Prompt (RAG)</label>
+                {{ bot_form.system_prompt_rag }}
+                <p class="help-text">
+                Wird verwendet, wenn Kontextpassagen vorhanden sind (RAG an).
+                </p>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">System Prompt (No-RAG)</label>
+                {{ bot_form.system_prompt_norag }}
+                <p class="help-text">
+                Wird verwendet, wenn keine Kontextpassagen genutzt werden (RAG aus).
+                </p>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">User Template (RAG)</label>
+                {{ bot_form.user_template_rag }}
+                <p class="help-text">
+                Muss Platzhalter <code>{question}</code> und <code>{context}</code> enthalten.
+                </p>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">User Template (No-RAG)</label>
+                {{ bot_form.user_template_norag }}
+                <p class="help-text">
+                Muss Platzhalter <code>{question}</code> enthalten.
+                </p>
+
+            <div class="settings-section settings-grid-2">
+            <div>
+                <label class="field-label">RAG Default</label>
+                {{ bot_form.rag_default_enabled }}
+            </div>
+            <div>
+                <label class="field-label">Citations Default</label>
+                {{ bot_form.citations_default_required }}
+            </div>
+            </div>
+
+            <div class="settings-section settings-grid-2">
+            <div>
+                <label class="field-label">Retrieval Top-K Default</label>
+                {{ bot_form.retrieval_top_k_default }}
+            </div>
+            <div>
+                <label class="field-label">Semantic Method Default</label>
+                {{ bot_form.semantic_method_default }}
+            </div>
+            </div>
+
+            <div class="settings-section">
+            <label class="field-label">Semantic Threshold Default</label>
+            {{ bot_form.semantic_threshold_default }}
+            </div>
+
+            </div>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">Greeting Message</label>
+                {{ bot_form.greeting_message }}
+            </div>
+
+            <div class="settings-section settings-grid-2">
+                <div>
+                    <label class="field-label">Conversation Tone</label>
+                    {{ bot_form.conversation_tone }}
+                </div>
+                <div>
+                    <label class="field-label">Response Length</label>
+                    {{ bot_form.response_length }}
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">
+                    Creativity Level (Temperature): {{ bot_form.instance.creativity_level|default_if_none:"0.3" }}
+                </label>
+                {{ bot_form.creativity_level }}
+                <p class="help-text">
+                    Lower values make responses more focused, higher values more creative.
+                </p>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">
+                    Confidence Threshold: {{ bot_form.instance.confidence_threshold|default_if_none:"75" }}%
+                </label>
+                {{ bot_form.confidence_threshold }}
+                <p class="help-text">
+                    Minimum confidence level before escalating to human support.
+                </p>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">Auto-Escalation</label>
+                <div class="toggle-row">
+                    {{ bot_form.auto_escalation_enabled }}
+                    <span class="toggle-label">Automatically escalate conversations to human agents</span>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <label class="field-label">Escalation Keywords</label>
+                {{ bot_form.escalation_keywords }}
+                <p class="help-text">Comma-separated keywords (e.g. urgent, critical, refund)</p>
+            </div>
+
+            <div class="settings-actions">
+                <button type="submit" class="btn-primary full-width">
+                    Save Chatbot Settings
+                </button>
+            </div>
+        </form>
+    </section>
+    <section class="admin-card" style="margin-top: 1.5rem;">
+    <header class="admin-card-header">
+        <h2>Externes Ticket-System</h2>
+        <p>Anbindung an externe Ticket-Systeme wie Freshdesk, Jira, Zendesk.</p>
+    </header>
+
+    <form method="post" class="settings-form">
+        {% csrf_token %}
+        <input type="hidden" name="save_ticket_system" value="1">
+
+        <div class="settings-section">
+            <label class="field-label">Aktiviert</label>
+            {{ ticket_form.enabled }}
+        </div>
+
+        <div class="settings-section">
+            <label class="field-label">API-URL</label>
+            {{ ticket_form.api_url }}
+        </div>
+
+        <div class="settings-section">
+            <label class="field-label">API-Key</label>
+            {{ ticket_form.api_key }}
+            <p class="help-text">Wird verschlüsselt gespeichert.</p>
+        </div>
+
+        <div class="settings-section">
+            <label class="field-label">Format</label>
+            {{ ticket_form.api_format }}
+        </div>
+
+        <div class="settings-actions">
+            <button type="submit" class="btn-primary full-width">Speichern</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

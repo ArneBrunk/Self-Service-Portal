@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Mitarbeiter Login | Self-Service Chatbot{% endblock %}
+
+{% block content %}
+<section class="auth-wrapper">
+    <div class="auth-card">
+        <h1>Mitarbeiter-Login</h1>
+        <p class="card-subtitle">Melde dich an, um das Firmenprofil und Wissensbasis zu verwalten.</p>
+
+        <form method="post" class="auth-form">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <div class="field">
+                {{ form.username.label_tag }}
+                {{ form.username }}
+                {{ form.username.errors }}
+            </div>
+            <div class="field">
+                {{ form.password.label_tag }}
+                {{ form.password }}
+                {{ form.password.errors }}
+            </div>
+            <button type="submit" class="btn-primary-small">Login als Mitarbeiter</button>
+        </form>
+
+        <p class="auth-switch">
+            Zurück zur <a href="{% url 'landing' %}">Kunden-Startseite</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

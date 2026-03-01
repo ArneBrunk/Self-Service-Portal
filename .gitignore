@@ -1,0 +1,8 @@
+# OneNote-Mist
+*.onetoc2
+*.one
+*.onepkg
+*.env
+*.torch_cpu.dll
+*.torch_cuda.dll
+*env312

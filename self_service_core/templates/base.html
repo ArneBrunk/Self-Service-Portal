@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Self-Service Portal{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="icon" type="image/x-icon" href="/media/favicon/favicon.ico">
+    <link rel="shortcut icon" href="/media/favicon/favicon.ico">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg">
+<header class="app-header">
+            {% if request.user.is_staff %}
+            <a href="{% url 'staff-dashboard' %}" class="logo-text">
+            {% else %}
+             <a href="{% url 'landing' %}" class="logo-text">
+            {% endif %}    
+            <div class="logo-area" >
+                {% if company and company.icon %}
+                    <img src="{{ company.icon.url }}" class="company-logo" alt="{{ company.name }}">
+                {% else %}
+                    <div class="logo-dot"></div>
+                {% endif %}
+
+                <span class="logo-text">
+                    {% if company %}
+                        {{ company.name }}
+                    {% else %}
+                        AI Support Portal
+                    {% endif %}
+                </span>
+            </div>
+            </a>
+   <div class="user-area">
+        {% if request.user.is_authenticated %}
+            {% if request.user.is_staff %}
+                <a href="{% url 'staff-profile' %}" class="btn-ghost small">
+                    {{ request.user.first_name|default:request.user.username }}
+                </a>
+            {% else %}
+            <a href="{% url 'customer-profile' %}" class="btn-ghost small">
+                 {{ request.user.first_name|default:request.user.username }}
+            </a>
+            {% endif %}
+            <a href="{% url 'logout' %}" class="btn-ghost small">
+                Logout
+            </a>
+        {% else %}
+            <a href="{% url 'login' %}" class="btn-outline small">Login</a>
+        {% endif %}
+    </div>
+
+</header>
+
+<main class="app-main">
+    {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>

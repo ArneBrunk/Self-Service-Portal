@@ -1,0 +1,909 @@
+{% extends "admin_header.html" %}
+{% block admin_content %}
+{% load dict_extras %}
+
+<!-- Chart data (Django-safe JSON) -->
+{{ chart_labels_rag_off|json_script:"chart-labels-rag-off" }}
+{{ chart_accuracy_rag_off|json_script:"chart-accuracy-rag-off" }}
+{{ chart_citation_rag_off|json_script:"chart-citation-rag-off" }}
+{{ chart_human_rag_off|json_script:"chart-human-rag-off" }}
+
+{{ chart_labels_rag_on|json_script:"chart-labels-rag-on" }}
+{{ chart_accuracy_rag_on|json_script:"chart-accuracy-rag-on" }}
+{{ chart_citation_rag_on|json_script:"chart-citation-rag-on" }}
+{{ chart_human_rag_on|json_script:"chart-human-rag-on" }}
+
+
+{# Optional: Semantic F1 trend (falls View es liefert) #}
+{% if chart_semantic_f1 is not None %}
+  {{ chart_semantic_f1|json_script:"chart-semantic-f1" }}
+{% else %}
+  <script id="chart-semantic-f1" type="application/json">[]</script>
+{% endif %}
+
+{# Rating Endpoint "Base URL" (0 als Platzhalter, wird in JS ersetzt) #}
+{{ request.user.id|json_script:"user-id" }}
+<script id="rate-url-base" type="application/json">
+  "{% url 'quality-rate-result' 0 %}"
+</script>
+
+<section class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <h2>Quality Check</h2>
+      <p>Überprüfe, wie gut dein KI-Bot deine vordefinierten Testfragen beantwortet (mit Zitationspflicht).</p>
+    </div>
+  </div>
+
+  <!-- Trend chart -->
+  <div class="quality-chart-grid">
+    <div class="quality-chart">
+      <div class="quality-chart-header">
+        <strong>Verlauf (ohne RAG)</strong>
+        <span >Accuracy und Human-Rating (Ø 0..2)</span>
+      </div>
+      <div class="quality-chart-canvas">
+        <canvas id="qualityTrendChartRagOff"></canvas>
+      </div>
+    </div>
+
+    <div class="quality-chart">
+      <div class="quality-chart-header">
+        <strong>Verlauf (mit RAG)</strong>
+        <span >Accuracy und Human-Rating (Ø 0..2)</span>
+      </div>
+      <div class="quality-chart-canvas">
+        <canvas id="qualityTrendChartRagOn"></canvas>
+      </div>
+    </div>
+</div>
+  <!-- Progress -->
+  <div class="quality-progress"
+       data-total="{{ total }}"
+       data-evaluated="{{ evaluated_count }}"
+       data-evaluated-percent="{{ evaluated_percent }}">
+
+    <div class="quality-progress-header">
+      <div>
+        <strong>Fortschritt</strong>
+        <p id="quality-progress-meta" class="help-text" style="margin:0.15rem 0 0;">
+          {{ evaluated_count }}/{{ total }} Fragen bewertet
+        </p>
+      </div>
+    </div>
+
+    <div class="quality-progress-bar-wrapper">
+      <div id="quality-progress-bar"
+           class="quality-progress-bar-fill"
+           style="width: {{ evaluated_percent }}%;"></div>
+    </div>
+  </div>
+
+  <!-- Run controls -->
+  <form id="quality-form" method="post" action="{% url 'staff-quality' %}">
+    {% csrf_token %}
+
+    <div class="quality-controls">
+      <label class="quality-control">
+        <span class="help-text">Limit</span>
+        <input name="limit" type="number" min="1" max="200" value="30" class="quality-input" />
+      </label>
+
+      <label class="quality-control" style="min-width: 180px;">
+        <span class="help-text">RAG verwenden</span>
+        <select name="rag_enabled" class="quality-input" id="rag-enabled">
+          <option value="1" selected>Ja (mit Quellen)</option>
+          <option value="0">Nein (ohne Retrieval)</option>
+        </select>
+      </label>
+
+      <label class="quality-control" style="min-width: 200px;">
+        <span class="help-text">Zitationspflicht</span>
+        <select name="citations_required" class="quality-input" id="citations-required">
+          <option value="1" selected>Erzwingen</option>
+          <option value="0">Aus</option>
+        </select>
+      </label>
+
+      <label class="quality-control">
+        <span class="help-text">Top-K</span>
+        <input name="top_k" type="number" min="1" max="20" value="8" class="quality-input" id="top-k" />
+      </label>
+
+      <!-- ✅ Fixed Threshold label: hint as tooltip icon (no extra line) -->
+      <label class="quality-control quality-control-threshold">
+        <span class="help-text quality-label-row">
+          Threshold
+          <span class="info-dot"
+                title="Hinweis: Der Threshold wird als minRecall genutzt (F1 separat konfigurierbar in Code)."
+                aria-label="Hinweis zu Threshold"
+                role="img">i</span>
+        </span>
+        <input name="threshold" type="number" step="0.01" min="0" max="1"
+               value="0.70" class="quality-input" />
+      </label>
+
+      <label class="quality-control">
+        <span class="help-text">Semantic Method</span>
+        <select name="semantic_method" class="quality-input">
+          <option value="v1">V1 (Coverage)</option>
+          <option value="v2" selected>V2 (Hybrid)</option>
+          <option value="legacy">Legacy (Global)</option>
+        </select>
+      </label>
+
+      <button id="quality-run-btn" type="submit" class="btn-primary">
+        Quality Check jetzt ausführen
+      </button>
+
+      <span id="quality-run-status" class="ticket-meta"></span>
+    </div>
+  </form>
+</section>
+
+<!-- Run results -->
+<section class="admin-card" style="margin-top:1.5rem;">
+  <div class="admin-card-header">
+    <div>
+      <h2>Ergebnisse</h2>
+      <p>
+        Pro Frage: Antwort, Quellenindikatoren und Human-Rating (0/1/2).<br/>
+        <span class="help-text">
+          {% if selected_run %}
+            Aktueller Run: <strong>#{{ selected_run.id }}</strong> ({{ selected_run.created_at }})
+          {% else %}
+            Noch kein Run durchgeführt.
+          {% endif %}
+        </span>
+      </p>
+    </div>
+ <span class="help-text">Run auswählen</span>
+    <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+      {% if runs %}
+        <label class="quality-control" style="min-width: 260px;">
+         
+          <select id="run-selector" class="quality-input">
+            {% for r0 in runs %}
+              <option value="{{ r0.id }}" {% if selected_run and r0.id == selected_run.id %}selected{% endif %}>
+                #{{ r0.id }},{{ r0.created_at }},RAG_Enabled={{ r0.rag_enabled }},Threshold={{ r0.semantic_threshold }} 
+            {% endfor %}
+          </select>
+        </label>
+
+        <button type="button" class="btn-primary" id="run-next">←</button>
+        <button type="button" class="btn-primary" id="run-prev">→</button>
+      {% endif %}
+
+      <a class="btn-primary" href="{% url 'quality-questions' %}">Testfragen verwalten</a>
+    </div>
+  </div>
+
+  {% if run_results %}
+    <div class="ticket-list">
+      {% for r in run_results %}
+        {# ✅ FIX: Ratings nach result_id (EvalResult.id) auflösen, nicht nach item_id #}
+        {% with hr=my_ratings|dict_get:r.item_id %}
+        <article class="ticket-item">
+          <div class="ticket-main">
+            <h3>Frage #{{ forloop.counter }}</h3>
+            <p class="ticket-meta">{{ r.item.question|linebreaksbr }}</p>
+
+            {% if r.item.expected_hint %}
+              <p class="ticket-meta">
+                <strong>Expected Hint:</strong> {{ r.item.expected_hint }}
+              </p>
+              {% if r.semantic_f1_like is not None %}
+                <p class="ticket-meta" style="margin-top:.25rem;">
+                  Semantic Scores: <strong>F1</strong> {{ r.semantic_f1_like|floatformat:3 }}
+                  {% if r.semantic_recall_like is not None %} · <strong>R</strong> {{ r.semantic_recall_like|floatformat:3 }}{% endif %}
+                  {% if r.semantic_precision_like is not None %} · <strong>P</strong> {{ r.semantic_precision_like|floatformat:3 }}{% endif %}
+                </p>
+              {% endif %}
+            {% endif %}
+
+            <div class="quality-result">
+
+              <details class="quality-answer">
+                <summary class="quality-summary">
+                  <span class="quality-summary-title">Antwort anzeigen</span>
+                  <span class="quality-summary-hint">Klicken zum Aufklappen</span>
+                </summary>
+                <div class="quality-answer-body">
+                  {{ r.answer|default:""|linebreaksbr }}
+                </div>
+              </details>
+
+              <div class="quality-result-meta">
+                <span class="tag {% if r.status_ok %}tag-success{% else %}tag-danger{% endif %}">
+                  {% if r.status_ok %}HTTP ok{% else %}HTTP fail{% endif %}
+                </span>
+
+                <span class="tag {% if r.sources_ok %}tag-success{% else %}tag-danger{% endif %}">
+                  {% if r.sources_ok %}Sources ok{% else %}No sources{% endif %}
+                </span>
+
+                {% if r.has_citation_markers is None %}
+                  <span class="tag">Citations N/A</span>
+                {% elif r.has_citation_markers %}
+                  <span class="tag tag-success">Citations ok</span>
+                {% else %}
+                  <span class="tag tag-danger">No [Sx]</span>
+                {% endif %}
+
+                {% if r.item.expected_hint %}
+                  <span class="tag tag-semantic {% if r.semantic_ok %}tag-success{% else %}tag-danger{% endif %}"
+                        title="F1 = Gesamtmaß (Fokus+Abdeckung), R = Coverage (expected→answer), P = Fokus (answer→expected)">
+                    {% if r.semantic_ok %}Semantic ok{% else %}Semantic fail{% endif %}
+
+                    {% if r.semantic_f1_like is not None %}
+                      <span class="sem-metrics">
+                        <span class="sem-pill">F1 {{ r.semantic_f1_like|floatformat:3 }}</span>
+                        {% if r.semantic_recall_like is not None %}
+                          <span class="sem-pill">R {{ r.semantic_recall_like|floatformat:3 }}</span>
+                        {% endif %}
+                        {% if r.semantic_precision_like is not None %}
+                          <span class="sem-pill">P {{ r.semantic_precision_like|floatformat:3 }}</span>
+                        {% endif %}
+                      </span>
+                    {% elif r.semantic_similarity is not None %}
+                      <span class="sem-metrics">
+                        <span class="sem-pill">Sim {{ r.semantic_similarity|floatformat:3 }}</span>
+                      </span>
+                    {% endif %}
+                  </span>
+                {% endif %}
+
+                <span class="tag {% if r.auto_correct %}tag-success{% else %}tag-danger{% endif %}">
+                  Auto: {% if r.auto_correct %}korrekt{% else %}falsch{% endif %}
+                </span>
+              </div>
+
+              {% if r.sources %}
+                <details class="quality-sources">
+                  <summary class="quality-summary">
+                    <span class="quality-summary-title">Quellen anzeigen</span>
+                    <span class="quality-summary-hint">{{ r.sources|length }} zitierte Quelle{% if r.sources|length != 1 %}n{% endif %}</span>
+                  </summary>
+
+                  <ol class="quality-sources-list">
+                    {% for s in r.sources %}
+                      <li class="quality-source">
+                        <div class="quality-source-title">
+                          <strong>[S{{ forloop.counter }}]</strong>
+                          {{ s.title|default:"Quelle" }}
+                          {% if s.page %} — Seite {{ s.page }}{% elif s.heading %} — {{ s.heading }}{% endif %}
+                          {% if s.score %}<span class="help-text"> (score {{ s.score|floatformat:3 }})</span>{% endif %}
+                        </div>
+                        {% if s.snippet %}
+                          <div class="quality-source-snippet">{{ s.snippet }}</div>
+                        {% endif %}
+                      </li>
+                    {% endfor %}
+                  </ol>
+                </details>
+              {% endif %}
+
+              <div class="quality-human">
+                <div class="quality-human-title">
+                  <span class="quality-summary-title">Human Rating</span>
+                  <span class="ticket-meta">Bewerte die Antwort anhand einer 3-stufigen Rubrik (0–2).</span>
+                  <span class="ticket-meta" id="rate-status-{{ r.id }}"></span>
+                </div>
+
+                <div class="quality-human-rubric">
+                  <div><strong>0</strong> = falsch/fehlend</div>
+                  <div><strong>1</strong> = teilweise korrekt/teilweise vollständig</div>
+                  <div><strong>2</strong> = korrekt/vollständig/nachvollziehbar belegt</div>
+                </div>
+
+                <div class="quality-human-grid" data-result-id="{{ r.id }}">
+                  <label class="quality-human-field">
+                    <span class="quality-human-label">Korrektheit</span>
+                    <span class="quality-human-desc">Ist die Antwort fachlich richtig?</span>
+                    <select class="quality-human-select" data-field="correctness">
+                      <option value="" {% if hr is None or hr.correctness is None %}selected{% endif %}>–</option>
+                      <option value="0" {% if hr and hr.correctness == 0 %}selected{% endif %}>0</option>
+                      <option value="1" {% if hr and hr.correctness == 1 %}selected{% endif %}>1</option>
+                      <option value="2" {% if hr and hr.correctness == 2 %}selected{% endif %}>2</option>
+                    </select>
+                  </label>
+
+                  <label class="quality-human-field">
+                    <span class="quality-human-label">Vollständigkeit</span>
+                    <span class="quality-human-desc">Deckt die Antwort alle relevanten Punkte ab?</span>
+                    <select class="quality-human-select" data-field="completeness">
+                      <option value="" {% if hr is None or hr.completeness is None %}selected{% endif %}>–</option>
+                      <option value="0" {% if hr and hr.completeness == 0 %}selected{% endif %}>0</option>
+                      <option value="1" {% if hr and hr.completeness == 1 %}selected{% endif %}>1</option>
+                      <option value="2" {% if hr and hr.completeness == 2 %}selected{% endif %}>2</option>
+                    </select>
+                  </label>
+
+                  <label class="quality-human-field">
+                    <span class="quality-human-label">Zitation</span>
+                    <span class="quality-human-desc">Sind Aussagen im Text durch Quellenmarker [Sx] gestützt?</span>
+                    <select class="quality-human-select" data-field="citations">
+                      <option value="" {% if hr is None or hr.citations is None %}selected{% endif %}>–</option>
+                      <option value="0" {% if hr and hr.citations == 0 %}selected{% endif %}>0</option>
+                      <option value="1" {% if hr and hr.citations == 1 %}selected{% endif %}>1</option>
+                      <option value="2" {% if hr and hr.citations == 2 %}selected{% endif %}>2</option>
+                    </select>
+                  </label>
+
+                  <button type="button" class="btn-primary quality-human-save">Speichern</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </article>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="admin-subtitle">Noch kein Run durchgeführt oder keine Ergebnisse vorhanden.</p>
+  {% endif %}
+</section>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+(function() {
+  function parse(id) {
+    return JSON.parse(document.getElementById(id)?.textContent || "[]");
+  }
+
+  function buildChart(canvasId, labelsId, accId, citId, humanId) {
+    const el = document.getElementById(canvasId);
+    if (!el) return;
+
+    const labels = parse(labelsId);
+    const acc = parse(accId);
+    const human = parse(humanId);
+
+    if (!labels.length) return;
+
+    const datasets = [
+      { label: "Accuracy (%)", data: acc, tension: 0.25, yAxisID: "y" },
+      { label: "Human Rating (Ø 0..2)", data: human, tension: 0.25, yAxisID: "y1" },
+    ];
+
+    new Chart(el, {
+      type: "line",
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: true }, tooltip: { enabled: true } },
+        scales: {
+          y: { beginAtZero: true, max: 100, ticks: { callback: (v) => v + "%" } },
+          y1: {
+            beginAtZero: true,
+            max: 2,
+            position: "right",
+            grid: { drawOnChartArea: false },
+            ticks: { callback: (v) => v },
+          }
+        }
+      }
+    });
+  }
+
+  buildChart(
+    "qualityTrendChartRagOff",
+    "chart-labels-rag-off",
+    "chart-accuracy-rag-off",
+    "chart-human-rag-off"
+  );
+
+  buildChart(
+    "qualityTrendChartRagOn",
+    "chart-labels-rag-on",
+    "chart-accuracy-rag-on",
+    "chart-human-rag-on"
+  );
+})();
+
+
+  function getCookie(name) {
+    const v = document.cookie.split("; ").find(row => row.startsWith(name + "="));
+    return v ? decodeURIComponent(v.split("=")[1]) : null;
+  }
+
+  async function fetchJson(url, options) {
+    const r = await fetch(url, options);
+    const text = await r.text();
+    if (!text || !text.trim()) throw new Error(`Leere Antwort (HTTP ${r.status}).`);
+    let data;
+    try { data = JSON.parse(text); }
+    catch { throw new Error(`Kein JSON (HTTP ${r.status}): ${text.slice(0, 200)}`); }
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+    return data;
+  }
+
+  const form = document.getElementById("quality-form");
+  const btn = document.getElementById("quality-run-btn");
+  const statusEl = document.getElementById("quality-run-status");
+  const progressBar = document.getElementById("quality-progress-bar");
+  const progressMeta = document.getElementById("quality-progress-meta");
+  const accuracyEl = document.getElementById("quality-accuracy");
+  const citationEl = document.getElementById("quality-citation");
+  const semanticF1El = document.getElementById("quality-semantic-f1");
+
+  if (form) {
+    form.addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      btn.disabled = true;
+      statusEl.textContent = "Quality-Check läuft…";
+
+      const formData = new FormData(form);
+
+      try {
+        const data = await fetchJson(form.action, {
+          method: "POST",
+          body: formData,
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+
+        const runId = data.run_id;
+        if (!runId) {
+          btn.disabled = false;
+          statusEl.textContent = "Fehler: Keine Run-ID erhalten.";
+          return;
+        }
+
+        const poll = setInterval(async () => {
+          try {
+            const s = await fetchJson(`/staff/quality/status/${runId}/`, {
+              headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+
+            progressBar.style.width = (s.evaluated_percent || 0) + "%";
+            if (progressMeta && s.total != null) {
+              progressMeta.textContent = `${s.evaluated_count || 0}/${s.total || 0} Fragen bewertet`;
+            }
+
+            if (s.status === "done") {
+              clearInterval(poll);
+              statusEl.textContent = "Quality-Check abgeschlossen.";
+
+              if (accuracyEl && s.accuracy != null) accuracyEl.textContent = `${s.accuracy}%`;
+              if (citationEl && s.citation_compliance != null) citationEl.textContent = `${s.citation_compliance}%`;
+              if (semanticF1El && s.semantic_f1_avg != null) semanticF1El.textContent = `${s.semantic_f1_avg}`;
+
+              window.location.reload();
+            }
+          } catch (err) {
+            clearInterval(poll);
+            btn.disabled = false;
+            statusEl.textContent = "Fehler beim Status-Abruf: " + err.message;
+          }
+        }, 800);
+
+      } catch (err) {
+        btn.disabled = false;
+        statusEl.textContent = "Fehler: " + err.message;
+      }
+    });
+  }
+
+  // --- Run Switcher (per ?run=<id>) ---
+  const runSel = document.getElementById("run-selector");
+  const btnPrev = document.getElementById("run-prev");
+  const btnNext = document.getElementById("run-next");
+
+  function gotoRun(runId) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("run", String(runId));
+    window.location.href = url.toString();
+  }
+
+  if (runSel) {
+    runSel.addEventListener("change", () => gotoRun(runSel.value));
+
+    const opts = Array.from(runSel.options).map(o => parseInt(o.value, 10));
+    const idx = () => runSel.selectedIndex;
+
+    if (btnPrev) btnPrev.addEventListener("click", () => {
+      const i = idx();
+      if (i > 0) gotoRun(opts[i - 1]);
+    });
+
+    if (btnNext) btnNext.addEventListener("click", () => {
+      const i = idx();
+      if (i < opts.length - 1) gotoRun(opts[i + 1]);
+    });
+  }
+
+  const rateBase = JSON.parse(document.getElementById("rate-url-base")?.textContent || "\"\"");
+  const csrf = getCookie("csrftoken");
+
+  document.querySelectorAll(".quality-human-grid").forEach(grid => {
+    const resultId = grid.dataset.resultId;
+    const btnSave = grid.querySelector(".quality-human-save");
+    const status = document.getElementById(`rate-status-${resultId}`);
+
+    if (!btnSave) return;
+
+    btnSave.addEventListener("click", async () => {
+      const payload = {};
+      grid.querySelectorAll(".quality-human-select").forEach(sel => {
+        payload[sel.dataset.field] = sel.value === "" ? null : parseInt(sel.value, 10);
+      });
+
+      if (status) status.textContent = "Speichern…";
+
+      try {
+        const url = rateBase.replace("/0/", `/${resultId}/`);
+        await fetchJson(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf || "",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: JSON.stringify(payload),
+        });
+        if (status) status.textContent = "✓ gespeichert";
+        setTimeout(() => { if (status) status.textContent = ""; }, 1200);
+      } catch (err) {
+        if (status) status.textContent = "Fehler: " + err.message;
+      }
+    });
+  });
+(function(){
+  const rag = document.getElementById("rag-enabled");
+  const cit = document.getElementById("citations-required");
+  const topk = document.getElementById("top-k");
+
+  // Defaults merken (damit wir sie beim Reaktivieren wiederherstellen können)
+  const defaultCit = cit ? cit.value : "1";
+  const defaultTopK = topk ? topk.value : "8";
+
+  function sync() {
+    if (!rag) return;
+
+    const ragOff = (rag.value === "0");
+
+    // --- ZITATIONSPFLICHT ---
+    if (cit) {
+      if (ragOff) {
+        cit.dataset.prev = cit.value;   // merken
+        cit.value = "0";
+        cit.disabled = true;
+        cit.title = "Ohne RAG gibt es keine Quellen – Zitationspflicht deaktiviert.";
+      } else {
+        cit.disabled = false;
+        cit.title = "";
+        // alten Wert wiederherstellen oder Default
+        cit.value = cit.dataset.prev || defaultCit || "1";
+      }
+    }
+
+    // --- TOP-K ---
+    if (topk) {
+      if (ragOff) {
+        topk.dataset.prev = topk.value;  // merken
+        topk.disabled = true;
+        topk.title = "Ohne RAG ist Top-K deaktiviert.";
+      } else {
+        topk.disabled = false;
+        topk.title = "";
+        // alten Wert wiederherstellen oder Default
+        topk.value = topk.dataset.prev || defaultTopK || "8";
+      }
+    }
+  }
+
+  if (rag) {
+    rag.addEventListener("change", sync);
+    sync(); // beim Laden initialisieren
+  }
+})();
+</script>
+
+
+<style>
+  .quality-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    color: #111827;
+  }
+
+  /* Charts: nebeneinander stabil, keine Layout-Sprünge */
+  .quality-chart-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  /* Wichtig: min-width:0 verhindert, dass Inhalte die Spalte aufblähen */
+  .quality-chart {
+    min-width: 0;
+      margin-top: 0.75rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 0.9rem;
+    background: #fff;
+  }
+
+  /* Canvas-Container: feste Höhe, verhindert "Springen" nach Render */
+  .quality-chart-canvas {
+    height: 320px;
+    margin-top: 0.75rem;
+    position: relative;
+  }
+
+  /* Canvas soll sich sauber an den Container halten */
+  .quality-chart-canvas canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
+
+  .quality-progress {
+    margin-top: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .quality-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+  }
+  .quality-kpis {
+    display: flex;
+    gap: 1rem;
+    color: #6b7280;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    text-align: right;
+  }
+  .quality-kpis strong {
+    color: #111827;
+    font-size: 1rem;
+  }
+  .quality-progress-bar-wrapper {
+    margin-top: 0.4rem;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .quality-progress-bar-fill {
+    height: 100%;
+    background: #2563eb;
+    border-radius: 999px;
+    transition: width 0.35s ease;
+  }
+
+  .quality-controls {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .quality-control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 120px;
+  }
+
+  .quality-control-threshold { min-width: 160px; }
+
+  .quality-input {
+    padding: 0.45rem 0.55rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    background: #fff;
+  }
+
+  .quality-label-row {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  .info-dot {
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 800;
+    font-size: .75rem;
+    line-height: 1;
+    cursor: help;
+    user-select: none;
+  }
+
+  .ticket-item {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  .ticket-main { min-width: 0; }
+
+  .quality-summary {
+    display: flex;
+    align-items: baseline;
+    gap: .75rem;
+    padding: .6rem .75rem;
+    border-radius: 12px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    color: #111827;
+    font-weight: 650;
+  }
+  .quality-summary-title {
+    gap: .5rem;
+    color: #111827;
+    font-size: .95rem;
+  }
+  .quality-summary-hint {
+    color: #4b5563;
+    font-weight: 500;
+    font-size: .85rem;
+  }
+  details > summary.quality-summary {
+    cursor: pointer;
+    list-style: none;
+  }
+  details > summary.quality-summary::-webkit-details-marker { display: none; }
+  details > summary.quality-summary::before {
+    content: "▸";
+    display: inline-block;
+    margin-right: .5rem;
+    color: #111827;
+    transform: translateY(-1px);
+  }
+  details[open] > summary.quality-summary::before { content: "▾"; }
+
+  .quality-answer {
+    margin-top: .5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: .55rem .7rem;
+    background: #fff;
+  }
+  .quality-answer-body { color:#111827; margin-top: .5rem; }
+
+  .quality-result { margin-top: 0.6rem; }
+  .quality-result-meta {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.45rem;
+    align-items: center;
+  }
+
+  .quality-sources {
+    margin-top: 0.6rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 0.5rem 0.65rem;
+    background: #fff;
+  }
+  .quality-sources-list { margin: 0.6rem 0 0; padding-left: 1.1rem; }
+  .quality-source { margin-bottom: 0.6rem; }
+  .quality-source-title { margin-bottom: 0.25rem; }
+  .quality-source-snippet {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    color: #111827;
+  }
+
+  .tag-semantic { display: inline-flex; align-items: center; gap: .35rem; }
+  .sem-metrics { display: inline-flex; gap: .25rem; margin-left: .25rem; }
+  .sem-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: .12rem .35rem;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.08);
+    background: rgba(255,255,255,.65);
+    font-size: .78rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .quality-human {
+    margin-top: .8rem;
+    border-top: 1px dashed #e5e7eb;
+    padding-top: .75rem;
+  }
+  .quality-human-title {
+    display: flex;
+    gap: .6rem;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .quality-human-rubric {
+    margin-top: .55rem;
+    display: grid;
+    gap: .25rem;
+    padding: .6rem .75rem;
+    border-radius: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+    font-size: .9rem;
+  }
+  .quality-human-grid {
+    margin-top: .55rem;
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    align-items: end;
+  }
+  .quality-human-field {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    min-width: 220px;
+  }
+  .quality-human-label { font-weight: 700; color: #111827; }
+  .quality-human-desc {
+    font-size: .85rem;
+    color: #6b7280;
+    line-height: 1.25;
+    margin-top: -2px;
+  }
+  .quality-human-select {
+    padding: 0.45rem 0.55rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    background: #fff;
+  }
+
+  .quality-human-select:focus,
+  .quality-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+  }
+
+  .tag { font-weight: 600; }
+
+  .quality-sources,
+  .quality-source,
+  .quality-source-title,
+  .quality-source-title strong,
+  .quality-source-snippet {
+    color: #111827;
+  }
+
+  .quality-source-title .help-text {
+    color: #111827;
+    opacity: 0.75;
+  }
+
+  /* Deaktivierte Inputs sichtbar ausgrauen */
+  .quality-input:disabled,
+  .quality-human-select:disabled {
+    background-color: #f3f4f6;      /* hellgrau */
+    color: #9ca3af;                 /* grauer Text */
+    border-color: #e5e7eb;
+    cursor: not-allowed;
+    opacity: 1;                     /* wichtig: verhindert „verwaschen“ */
+  }
+</style>
+
+{% endblock %}

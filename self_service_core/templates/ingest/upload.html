@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Dokument hochladen</title>
+</head>
+<body>
+<h1>Dokument hochladen</h1>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Hochladen & indexieren</button>
+</form>
+</body>
+</html>
