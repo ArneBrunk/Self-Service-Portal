@@ -1,21 +1,20 @@
-from django.shortcuts import render, redirect , get_object_or_404
+# --- Import Django ---
+from django.shortcuts import render, redirect 
 from django.views import View
 from django.contrib.auth import login, logout
 from django.contrib.auth.views import LoginView
-from django.urls import reverse_lazy, reverse
+from django.urls import reverse_lazy
 from django.contrib import messages
-from .forms import LoginForm
-from .forms import CustomerProfileForm
-from django.views import View
-from django.shortcuts import render, redirect
-from django.contrib.auth import login
-from .forms import CustomerRegisterForm
+# --- Import App-Content ---
+from .forms import CustomerRegisterForm, CustomerProfileForm, LoginForm
 from .models import Customer, ServicePlan, User
 from .utils import generate_customer_id
-from staff.models import CompanyProfile
 from .mixin import CustomerRequiredMixin
+#--------------
+from staff.models import CompanyProfile
 
 
+# --- Views ---
 class HomeView(View):
     template_name = "home.html"
 
@@ -58,7 +57,6 @@ class CustomerProfileView(CustomerRequiredMixin, View):
         })
 
     def post(self, request):
-        # Account löschen?
         if "delete_account" in request.POST:
             user = request.user
             # Soft-Delete: User deaktivieren (sicherer für Logs/Referenzen)
@@ -67,7 +65,7 @@ class CustomerProfileView(CustomerRequiredMixin, View):
 
             logout(request)
             messages.success(request, "Dein Account wurde deaktiviert.")
-            return redirect("landing")  # oder deine Startseiten-URL
+            return redirect("landing") 
 
         # Profil aktualisieren
         form = CustomerProfileForm(request.POST, instance=request.user)

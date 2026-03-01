@@ -53,7 +53,7 @@ def normalize_multi_citations(text: str) -> str:
     def repl(m: re.Match) -> str:
         inner = m.group(1)  # z.B. "S1, S3, S4"
         parts = [p.strip() for p in inner.split(",")]
-        parts = [p for p in parts if p]  # Sicherheit
+        parts = [p for p in parts if p]  
         return "".join(f"[{p}]" for p in parts)
 
     return _MULTI_CITE_RE.sub(repl, text)
@@ -84,7 +84,6 @@ def parse_meta_loose(raw_meta):
 def src_meta(p):
     """
     Einheitliche Passage->Source-Meta Normalisierung.
-    (vorher hattest du diese Funktion mehrfach in unterschiedlichen Varianten)
     """
     meta = parse_meta_loose(p.get("meta") or {})
 
@@ -108,12 +107,7 @@ def src_meta(p):
     }
 
 
-def build_history_messages(
-    session: Optional[ChatSession],
-    *,
-    max_turns: int = 6,
-    current_user_text: Optional[str] = None
-) -> list[dict]:
+def build_history_messages(session: Optional[ChatSession],*, max_turns: int = 6, current_user_text: Optional[str] = None) -> list[dict]:
     """
     Baut LLM-Messages aus der Session-History.
     """
@@ -140,8 +134,7 @@ def build_history_messages(
 
 def sanitize_citations_keep_valid(answer: str, max_sources: int) -> tuple[str, list[int]]:
     """
-    Entfernt ungültige Marker (z.B. [S7] bei nur 6 Quellen) und gibt
-    die gültigen zitierten Indizes zurück.
+    Entfernt ungültige Marker (z.B. [S7] bei nur 6 Quellen) und gibt die gültigen zitierten Indizes zurück.
     """
     if not answer:
         return answer, []
@@ -158,21 +151,13 @@ def sanitize_citations_keep_valid(answer: str, max_sources: int) -> tuple[str, l
     return cleaned, cited_valid
 
 
-def build_prompts(
-    cfg: ChatbotConfig,
-    *,
-    rag_enabled: bool,
-    passages_present: bool,
-    question: str,
-    context: str,
-) -> tuple[str, str]:
+def build_prompts(cfg: ChatbotConfig,*,rag_enabled: bool,passages_present: bool,question: str,context: str,) -> tuple[str, str]:
     """
     Liefert (system_prompt, user_prompt) basierend auf Settings (cfg) und Modus.
     - RAG: nutzt cfg.system_prompt_rag / cfg.user_template_rag
     - No-RAG: nutzt cfg.system_prompt_norag / cfg.user_template_norag
     - Fallback auf Defaults, falls Feld leer
     """
-
     if rag_enabled and passages_present:
         base_system = (getattr(cfg, "system_prompt_rag", "") or "").strip() or DEFAULT_SYSTEM_RAG
         user_tmpl = (getattr(cfg, "user_template_rag", "") or "").strip() or DEFAULT_USER_RAG
@@ -219,13 +204,7 @@ def is_non_answer(answer: str) -> bool:
     return any(m in a for m in markers)
 
 
-def compute_escalation(
-    *,
-    q: str,
-    answer: str,
-    passages: List[Dict],
-    cfg: ChatbotConfig,
-) -> Tuple[bool, Optional[str], float]:
+def compute_escalation(*,q: str,answer: str, passages: List[Dict], cfg: ChatbotConfig,) -> Tuple[bool, Optional[str], float]:
     """
     Returns:
       should_escalate (bool),
@@ -250,13 +229,7 @@ def compute_escalation(
     return False, None, best_score
 
 
-def call_llm(
-    system_prompt: str,
-    user_prompt: str,
-    cfg: Optional[ChatbotConfig] = None,
-    *,
-    history_messages: Optional[list[dict]] = None,
-) -> str:
+def call_llm(system_prompt: str,user_prompt: str,cfg: Optional[ChatbotConfig] = None,*,history_messages: Optional[list[dict]] = None,) -> str:
     api_key = cfg.openai_api_key or os.environ.get("OPENAI_API_KEY") if cfg else os.environ.get("OPENAI_API_KEY")
 
     if not api_key:
@@ -289,14 +262,8 @@ def call_llm(
 
 
 
-def generate_answer_for_question(
-    q: str,
-    request_user,
-    cfg: Optional[ChatbotConfig] = None,
-    *,
-    session: Optional[ChatSession] = None,   # ✅ NEU: für History
-):
-    # Notices
+def generate_answer_for_question(q: str,request_user,cfg: Optional[ChatbotConfig] = None,*,session: Optional[ChatSession] = None,):
+    # eventuell aktivierte Störungsmeldung prüfen
     active = TempNotice.objects.filter(enabled=True, starts_at__lte=now(), ends_at__gte=now()).order_by("-priority")
     notice = active.first() if active.exists() else None
     if notice and notice.mode == "override":
@@ -309,10 +276,10 @@ def generate_answer_for_question(
     rag_enabled = True
     citations_required = True
 
-    # ✅ History (ohne Doppelung der aktuellen User-Nachricht)
+    #History aufbauen (max 6 Turns + aktuelle User-Message, damit LLM Kontext hat, aber nicht zu lang wird)
     history = build_history_messages(session, max_turns=6, current_user_text=q)
 
-    # Retrieval
+    # Retrieval NUR wenn RAG enabled (Customer-Chat ist immer RAG)
     q_vec = embed_texts([q])[0]
     acl = getattr(request_user, "acl_groups", []) if request_user and request_user.is_authenticated else []
     passages = search_similar(q_vec, k=6, acl=acl)
@@ -331,11 +298,11 @@ def generate_answer_for_question(
     answer = call_llm(system_prompt, user_prompt, cfg, history_messages=history)
     answer = normalize_multi_citations(answer)
 
-    # prepend/append Notice
+    # Notice prepend/append
     if notice and notice.mode in {"prepend", "append"}:
         answer = (notice.body + "\n\n" + answer) if notice.mode == "prepend" else (answer + "\n\n" + notice.body)
 
-    # ✅ robustes Citation-Handling
+    # Quellen auf zitierte reduzieren + Marker remappen (wenn RAG + Zitationspflicht)
     used_sources = []
     if citations_required and sources_all:
         # Erst ungültige Marker entfernen, gültige bestimmen
@@ -344,22 +311,17 @@ def generate_answer_for_question(
 
         if cited_valid and markers_ok:
             used_sources = [s for i, s in enumerate(sources_all, start=1) if i in set(cited_valid)]
-            answer, _mapping = remap_citations(answer, cited_valid)  # <<< WICHTIG
+            answer, _mapping = remap_citations(answer, cited_valid)
         else:
             # Wenn Marker kaputt: keine falschen Quellen anzeigen, Marker entfernen
             used_sources = []
             answer = _CITE_RE.sub("", answer).strip()
 
-    # ✅ Eskalation berechnen (inkl. best_score/threshold)
+    # Eskalation IMMER berechnen (auch Staff), aber Ticket nur bei Non-Staff
     threshold = (cfg.confidence_threshold or 75) / 100.0
     should_escalate, reason, best_score = (False, None, 0.0)
     if cfg.auto_escalation_enabled:
-        should_escalate, reason, best_score = compute_escalation(
-            q=q, answer=answer, passages=passages, cfg=cfg
-        )
-
-    # Rückgabe erweitert:
-    # answer, used_sources, notice, passages, esc_tuple, threshold
+        should_escalate, reason, best_score = compute_escalation(q=q, answer=answer, passages=passages, cfg=cfg)
     return answer, used_sources, notice, passages, (should_escalate, reason, best_score), threshold
 
 

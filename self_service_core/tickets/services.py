@@ -1,7 +1,11 @@
-import requests
+# --- Import Django ---
 from django.utils.timezone import now
+# --- Import App-Content ---
 from tickets.models import TicketSystemConfig
+# --- Import Sonstige Module ---
+import requests
 
+# ---  Helper-Funktionen ---
 def format_sources(sources):
     """
     Formatiert Quellen kurz: [S1] Titel – Seite X – (score 0.87)
@@ -37,7 +41,6 @@ def format_sources(sources):
 
         lines.append(f"[S{i}] {title}{meta_txt}")
 
-        # Optional: Snippet für Support hilfreich, aber kurz halten
         if snippet:
             lines.append(f"    \"{snippet[:300]}\"")
 
@@ -55,15 +58,13 @@ def format_chat_history(session):
         role = "Kunde" if msg.role == "user" else "Bot"
         timestamp = msg.created_at.strftime("%d.%m.%Y %H:%M")
         lines.append(f"[{timestamp}] {role}: {msg.content}")
-
-        # ✅ Quellen bei Bot-Nachrichten ergänzen
         if msg.role != "user":
             src_block = format_sources(getattr(msg, "sources", None))
             if src_block:
                 lines.append("  Quellen:")
                 lines.append(src_block)
 
-        lines.append("")  # Leerzeile zwischen Messages
+        lines.append("")  
 
     return "\n".join(lines).strip()
 
@@ -103,24 +104,17 @@ def export_ticket_to_external(ticket):
     if tickets_url.endswith("/tickets"):
         base_api_url = tickets_url[: -len("/tickets")]
     else:
-        # Fallback: wir hoffen, dass cfg.api_url bereits /api/v1 ist
         base_api_url = tickets_url
 
     # Kundendaten aus dem Ticket
     customer_email = getattr(ticket, "customer_email", None)
     customer_name = getattr(ticket, "customer_name", "") or "Unknown"
-
-    # ------------------------------
-    # 1) Customer suchen / anlegen
-    # ------------------------------
     customer_id = None
 
-    # a) per E-Mail suchen, wenn vorhanden
     try:
         if customer_email:
             search_params = {"query": f"email:{customer_email}"}
         else:
-            # Fallback: nach Name suchen (nicht perfekt, aber besser als nichts)
             search_params = {"query": customer_name}
 
         search_resp = requests.get(
@@ -137,15 +131,11 @@ def export_ticket_to_external(ticket):
                 users = []
 
             if isinstance(users, list) and users:
-                # Nimm den ersten Treffer
                 customer_id = users[0].get("id")
     except requests.RequestException:
-        # Suche ist fehlgeschlagen – wir versuchen später einfach, einen neuen User anzulegen
         customer_id = None
 
-    # b) Wenn kein Customer gefunden wurde → neuen anlegen
     if customer_id is None:
-        # einfachen Namen aufteilen
         parts = customer_name.split(" ", 1)
         firstname = parts[0]
         lastname = parts[1] if len(parts) > 1 else ""
@@ -154,7 +144,6 @@ def export_ticket_to_external(ticket):
             "firstname": firstname,
             "lastname": lastname or "Customer",
             "email": customer_email,
-            # In einer Standard-Zammad-Installation ist 3 = "Customer"
             "role_ids": [3],
         }
 
@@ -184,10 +173,6 @@ def export_ticket_to_external(ticket):
         if not customer_id:
             return False, "Customer in Zammad erstellt, aber keine ID erhalten."
 
-    # ------------------------------
-    # 2) Ticket-Body bauen
-    # ------------------------------
-
     subject = f"[{ticket.priority.upper()}] {ticket.title}"
     body_text = (
         f"Kunde: {ticket.customer_name}\n"
@@ -200,10 +185,7 @@ def export_ticket_to_external(ticket):
     )
     payload = {
         "title": ticket.title,
-        # group kann Name ODER ID sein – hier Beispiel "Users"
-        # ggf. später konfigurierbar machen
         "group": "Users",
-        # Wir nutzen explizit die customer_id, um Lookup-Probleme zu vermeiden
         "customer_id": customer_id,
         "article": {
             "subject": subject,
@@ -213,9 +195,6 @@ def export_ticket_to_external(ticket):
         },
     }
 
-    # ------------------------------
-    # 3) Ticket anlegen
-    # ------------------------------
     try:
         resp = requests.post(cfg.api_url, json=payload, headers=headers, timeout=10)
     except requests.RequestException as e:
@@ -241,7 +220,6 @@ def export_ticket_to_external(ticket):
 
         return True, f"Ticket erfolgreich an Zammad exportiert (ID: {external_id or 'unbekannt'})."
 
-    # Fehlerfall mit Zammad-Response
     return False, f"Fehler beim Zammad-Export: HTTP {resp.status_code} – {resp.text}"
 
 
@@ -261,10 +239,7 @@ def close_ticket_in_external(ticket):
     if not ticket.external_id:
         return False, "Ticket hat keine externe Zammad-ID."
 
-    # Basis-URL aus api_url ableiten:
-    # z.B. cfg.api_url = https://example.org/api/v1/tickets
-    # → base = https://example.org/api/v1/tickets/<id>
-    base_url = cfg.api_url.rstrip("/")  # safety
+    base_url = cfg.api_url.rstrip("/")  
     url = f"{base_url}/{ticket.external_id}"
 
     headers = {
@@ -273,8 +248,6 @@ def close_ticket_in_external(ticket):
     }
 
     payload = {
-        # Je nach Zammad-Setup kannst du auch mit state_id arbeiten.
-        # 'closed' ist ein üblicher State-Name.
         "state": "closed",
     }
 
@@ -284,7 +257,6 @@ def close_ticket_in_external(ticket):
         return False, f"Request-Fehler: {e}"
 
     if resp.status_code in (200, 201):
-        # Lokal Ticket auf erledigt setzen
         ticket.status = "solved"
         ticket.save(update_fields=["status"])
         return True, "Ticket in Zammad geschlossen und lokal auf 'Erledigt' gesetzt."

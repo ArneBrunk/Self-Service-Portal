@@ -1,19 +1,17 @@
+# --- Import Django ---
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
-from .utils import generate_favicon_from_logo
 from django_cryptography.fields import encrypt
+# --- Import App-Content ---
+from .utils import generate_favicon_from_logo
 
-from django.db import models
-from django.conf import settings
-
-
+# --- Models ---
 class StaffUser(models.Model):
     ROLE_CHOICES = [
         ("employee", "Mitarbeiter"),
         ("admin", "Administrator"),
     ]
-
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -74,10 +72,8 @@ class ChatbotConfig(models.Model):
     ))
     bot_name = models.CharField(max_length=100, default="Support Bot")
     bot_role = models.CharField(max_length=200, default="Customer Support Assistant")
-
     system_prompt_rag = models.TextField(blank=True, default="")
     system_prompt_norag = models.TextField(blank=True, default="")
-
     user_template_rag = models.TextField(blank=True, default="")
     user_template_norag = models.TextField(blank=True, default="")
     greeting_message = models.TextField(
@@ -92,14 +88,12 @@ class ChatbotConfig(models.Model):
         max_length=20, choices=[("v1","V1 (Coverage)"),("v2","V2 (Hybrid)"),("legacy","Legacy")],
         default="v1"
     )
-
     conversation_tone = models.CharField(
         max_length=32, choices=TONE_CHOICES, default="professional"
     )
     response_length = models.CharField(
         max_length=32, choices=RESPONSE_LENGTH_CHOICES, default="moderate"
     )
-
     creativity_level = models.FloatField(
         default=0.3,
         help_text="Temperature between 0.0 (focused) and 1.0 (creative).",
@@ -108,15 +102,12 @@ class ChatbotConfig(models.Model):
         default=75,
         help_text="Percent. Below this, conversation may be escalated.",
     )
-
     auto_escalation_enabled = models.BooleanField(default=True)
     escalation_keywords = models.TextField(
         blank=True,
         help_text="Comma-separated keywords that should trigger escalation (e.g. urgent,critical,refund).",
     )
-
     proactive_help_enabled = models.BooleanField(default=False)
-
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -133,7 +124,6 @@ class ChatbotConfig(models.Model):
     def get_solo(cls):
         obj, _ = cls.objects.get_or_create(id=1)
         return obj
-
     def escalation_keywords_list(self) -> list[str]:
         if not self.escalation_keywords:
             return []

@@ -10,7 +10,6 @@ import json
 from typing import List, Dict, Optional, Tuple
 
 # ---  Variablen ---
-# ---  PII Redaction (pragmatisch, erweiterbar) ---
 RE_EMAIL = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 RE_PHONE = re.compile(r"\b(\+?\d[\d\s().-]{7,}\d)\b")
 RE_IDLIKE = re.compile(r"\b([A-Z]{0,3}\d{6,}|KD[-\s]?\d+|KUNDENNR[:\s]?\d+)\b", re.IGNORECASE)
@@ -27,10 +26,8 @@ def redact_pii(text: str) -> str:
 
 
 def normalize_question(text: str) -> str:
-    """Sehr simple Normalisierung für dedupe-key (kein ML)."""
     t = (text or "").strip().lower()
     t = re.sub(r"\s+", " ", t)
-    # optional: Satzzeichen raus, aber nicht zu aggressiv
     t = re.sub(r"[“”\"'`]", "", t)
     return t
 
@@ -40,10 +37,6 @@ def _to_pgvector(vec: list[float]) -> str:
 
 
 def _top_sources_from_passages(passages: List[Dict], limit: int = 3) -> List[Dict]:
-    """
-    Passages sind deine retrieval Treffer: {source_kind, source_id, score, meta, text, ...}
-    Wir speichern nur leichte Metadaten.
-    """
     out = []
     for p in (passages or [])[:limit]:
         meta = p.get("meta") or {}
@@ -67,7 +60,6 @@ def _top_sources_from_passages(passages: List[Dict], limit: int = 3) -> List[Dic
 def find_similar_gap(embedding: List[float], min_similarity: float = 0.82) -> Optional[int]:
     """
     Sucht den ähnlichsten Gap per pgvector.
-    similarity = 1 - (embedding <#> vec) (analog zu knowledge_chunk)
     """
     vec = _to_pgvector(embedding)
     sql = """
@@ -97,8 +89,7 @@ def set_gap_embedding(gap_id: int, embedding: List[float]) -> None:
         cur.execute(sql, [vec, gap_id])
 
 @transaction.atomic
-def log_knowledge_gap(
-    *,
+def log_knowledge_gap(*,
     question: str,
     reason: str,
     passages: List[Dict],
@@ -123,7 +114,7 @@ def log_knowledge_gap(
     # Embedding auf normalisiertem Text (reduziert Duplikate)
     emb = embed_texts([q_norm])[0]
 
-    # Erst versuchen: vektor-basiertes Clustering
+    # vektor-basiertes Clustering
     similar_id = find_similar_gap(emb, min_similarity=min_similarity)
 
     if similar_id:
@@ -135,7 +126,6 @@ def log_knowledge_gap(
             gap.title = (gap.representative_question[:120] or "").strip()
         gap.save(update_fields=["count", "last_seen_at", "reason_top", "title", "updated_at"])
     else:
-        # Fallback: simple dedupe key (falls embedding-Suche mal leer ist)
         gap = KnowledgeGap.objects.filter(representative_question_norm=q_norm).first()
         if gap:
             gap = KnowledgeGap.objects.select_for_update().get(id=gap.id)

@@ -1,12 +1,14 @@
-# staff/signals.py
+# --- Import Django ---
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.conf import settings
 
+# --- Import App-Content ---
 from users.models import User
 from .models import StaffUser
 
 
+
+# ---  Helper-Funktionen ---
 @receiver(post_save, sender=User)
 def ensure_superuser_has_staff_profile(sender, instance: User, created, **kwargs):
     """

@@ -1,32 +1,29 @@
+# --- Import Django ---
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.http import JsonResponse
 from django.views import View
 
+# --- Import App-Content ---
 from staff.mixin import StaffAdminRequiredMixin, StaffRequiredMixin
 from chat.views import ChatView
-
+#--------------
 from .models import EvalItem
 from .models import EvalRun as EvalRunModel,  EvalResult, HumanRating
 from .eval_utils import is_semantically_correct_v2
-
+# --- Import Sonstige Module ---
 import json
 
-class EvalRunAPIView(APIView):
-    """
-    Optionaler API-Endpunkt: führt einen (synchronen) Quality-Run aus.
-    Für die UI-Variante nutzt du aber besser deinen Thread-Run (StaffQualityView.post()).
-    """
-    permission_classes = [IsAuthenticated, StaffAdminRequiredMixin]
 
+# --- Views ---
+class EvalRunAPIView(APIView):
+    permission_classes = [IsAuthenticated, StaffAdminRequiredMixin]
     def post(self, request):
         limit = int(request.data.get("limit", 20))
         limit = max(1, min(limit, 50))
-
         threshold = float(request.data.get("threshold", 0.80))
         items = list(EvalItem.objects.all()[:limit])
-
         correct = 0
 
         for it in items:
@@ -46,8 +43,7 @@ class EvalRunAPIView(APIView):
             )
 
             expected_hint = getattr(it, "expected_hint", None)
-
-            # Semantischer Vergleich (nur wenn expected_hint vorhanden)
+            # Semantischer Vergleich
             if expected_hint:
                 semantic_ok, similarity = is_semantically_correct_v2(answer_text, expected_hint, threshold=threshold)
             else:
@@ -57,7 +53,6 @@ class EvalRunAPIView(APIView):
 
             it.last_accuracy = bool(ok)
             it.save(update_fields=["last_accuracy"])
-
             correct += 1 if ok else 0
 
         return Response({
@@ -71,9 +66,7 @@ class EvalRunAPIView(APIView):
 class QualityRunStatusView(StaffRequiredMixin, View):
     def get(self, request, run_id):
         run = EvalRunModel.objects.get(id=run_id)
-
         percent = int((run.evaluated / run.total) * 100) if run.total else 0
-
         return JsonResponse({
             "run_id": run.id,
             "status": run.status,
@@ -112,9 +105,6 @@ class QualityHumanRatingUpdateView(StaffRequiredMixin, View):
             completeness = norm(payload.get("completeness"))
             citations = norm(payload.get("citations"))
 
-
-            # WICHTIG: jetzt speichern wir NICHT mehr in EvalResult,
-            # sondern in HumanRating (ein Datensatz pro Nutzer/Rater)
             HumanRating.objects.update_or_create(
                 run=res.run,
                 item=res.item,

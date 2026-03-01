@@ -1,3 +1,4 @@
+# --- Import Sonstige Module ---
 import json
 import re
 from sentence_transformers import SentenceTransformer, util
@@ -5,7 +6,7 @@ from sentence_transformers import SentenceTransformer, util
 #_sem_model = SentenceTransformer("all-MiniLM-L6-v2")
 _sem_model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
 
-
+# ---  Helper-Funktionen ---
 def semantic_global_similarity_ok(answer: str, expected: str, threshold: float):
     if not answer or not expected:
         return False, 0.0
@@ -20,7 +21,7 @@ def semantic_global_similarity_ok(answer: str, expected: str, threshold: float):
 
 def normalize_sources(raw_sources):
     """
-    Normalisiert deine Passage-Dicts zu einem stabilen Format für:
+    Normalisiert Passage-Dicts zu einem stabilen Format für:
     - Template Rendering
     - Citation-Marker Validierung
     """
@@ -54,8 +55,6 @@ def normalize_sources(raw_sources):
             "heading": meta.get("heading") or meta.get("section"),
             "snippet": snippet,
             "score": float(p.get("score") or 0.0),
-
-            # optional: debug/trace
             "source_kind": p.get("source_kind"),
             "source_id": p.get("source_id"),
             "ord": p.get("ord"),
@@ -86,10 +85,6 @@ def extract_cited_indices(answer: str) -> set[int]:
 
 
 def filter_defaults_for_model(model_cls, defaults: dict) -> dict:
-    """
-    Verhindert 'Invalid field name(s)...' bei update_or_create,
-    falls DB-Felder (noch) nicht existieren.
-    """
     allowed = {f.name for f in model_cls._meta.get_fields() if hasattr(f, "attname")}
     return {k: v for k, v in defaults.items() if k in allowed}
 
@@ -176,7 +171,7 @@ def is_semantically_correct_v2(answer: str, expected: str,
     # Coverage (auf normalisiertem Chunking)
     r, p, f1 = semantic_coverage_score(answer, expected)
 
-    # Global (auch normalisieren!)
+    # Global 
     a_norm = _normalize_for_semantic(answer)
     e_norm = _normalize_for_semantic(expected)
     _, global_sim = semantic_global_similarity_ok(a_norm, e_norm, threshold=min_global)
@@ -190,7 +185,7 @@ def is_semantically_correct_v2(answer: str, expected: str,
         emb_e = _sem_model.encode(e_chunks, convert_to_tensor=True, normalize_embeddings=True)
         max_pair = util.cos_sim(emb_e, emb_a).max().item()
 
-    # 2-von-3 Gate + Definition-Boost
+    # 2-von-3 Gate 
     passed = sum([
         r >= min_recall,
         f1 >= min_f1,

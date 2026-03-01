@@ -1,13 +1,15 @@
+# --- Import Django ---
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
+# --- Models ---
 class ServicePlan(models.Model):
     """
     Service-Level für Kunden: free, premium, pro, etc.
     """
-    code = models.CharField(max_length=20, unique=True)   # z.B. "free"
-    name = models.CharField(max_length=50)                # z.B. "Free"
+    code = models.CharField(max_length=20, unique=True)  
+    name = models.CharField(max_length=50)               
     description = models.TextField(blank=True)
     max_daily_messages = models.IntegerField(default=50)
     max_monthly_messages = models.IntegerField(default=500)
@@ -20,9 +22,7 @@ class ServicePlan(models.Model):
 class User(AbstractUser):
     """
     Zentrales Login-Modell.
-    Keine kunden- oder mitarbeiterspezifischen Felder direkt hier drin.
     """
-    # du kannst hier Dinge lassen wie "language" etc., aber KEINE Rolle.
     pass
 
 

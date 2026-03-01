@@ -1,7 +1,10 @@
+# --- Import Django ---
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
 
+
+# ---  Variablen ---
 STATUS = [
     ("draft", "Draft"),
     ("review", "Review"),
@@ -9,7 +12,7 @@ STATUS = [
     ("archived", "Archived"),
 ]
 
-
+# --- Models ---
 class Document(models.Model):
     STATUS_CHOICES = [
         ("uploaded", "Hochgeladen"),
@@ -63,7 +66,6 @@ class TempNotice(models.Model):
 class MaintenanceTemplate(models.Model):
     """
     Vorlage für Wartungs-/Störungsmeldungen.
-    Dient als Blaupause für TempNotice.
     """
     SEVERITY_CHOICES = [("info", "Hinweis"),("warning", "Warnung"), ("critical", "Störung"), ("maintenance", "Wartung")]
     title = models.CharField(max_length=200)
@@ -85,9 +87,6 @@ class Chunk(models.Model):
     ord = models.IntegerField(default=0)
     text = models.TextField()
     meta = models.JSONField(default=dict, blank=True)
-    # embedding: pgvector Spalte via Migration (vector(1536))
-    # Django sieht sie als "undocumented"; Zugriff via raw SQL/psycopg empfohlen
-
     class Meta:
         indexes = [models.Index(fields=["source_kind","source_id"]) ]
 

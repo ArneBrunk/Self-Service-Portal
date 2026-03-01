@@ -1,6 +1,8 @@
-# chat/forms.py
+# --- Import Django ---
 from django import forms
 
+
+# --- Forms ---
 class ChatForm(forms.Form):
     message = forms.CharField(
         label="Deine Frage",

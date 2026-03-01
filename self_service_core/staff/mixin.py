@@ -1,6 +1,9 @@
+# --- Import Django ---
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 
 
+
+# --- Klassen ---
 class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     """
     Erlaubt nur Mitarbeiter/Admins (StaffUser).

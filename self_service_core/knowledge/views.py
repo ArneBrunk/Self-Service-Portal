@@ -1,9 +1,14 @@
+# --- Import Django ---
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
+
+# --- Import App-Content ---
 from .models import KBEntry, TempNotice
 from .serializers import KBEntrySerializer, TempNoticeSerializer
 from staff.mixin import StaffAdminRequiredMixin, StaffRequiredMixin
 
+
+# --- Views ---
 class KBViewSet(viewsets.ModelViewSet):
     queryset = KBEntry.objects.all()
     serializer_class = KBEntrySerializer

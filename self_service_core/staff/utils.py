@@ -1,8 +1,11 @@
+# --- Import Django ---
+from django.conf import settings
+# --- Import Sonstige Module ---
 from PIL import Image
 from pathlib import Path
-from django.conf import settings
 
 
+# ---  Helper-Funktionen ---
 def generate_favicon_from_logo(logo_field):
     """
     Erstellt beim Upload des Company-Logos automatisch ein favicon.ico.
@@ -19,10 +22,7 @@ def generate_favicon_from_logo(logo_field):
     favicon_path = favicon_dir / "favicon.ico"
 
     try:
-        # Bild öffnen
         img = Image.open(logo_path).convert("RGBA")
-
-        # quadratisch croppen
         size = min(img.size)
         img = img.crop((
             (img.width - size) // 2,

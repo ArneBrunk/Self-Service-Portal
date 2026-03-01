@@ -22,7 +22,7 @@ class KBEntryForm(forms.ModelForm):
         required=False,
         widget=forms.SelectMultiple(attrs={
             "class": "input",
-            "size": 6,       # Anzahl sichtbarer Einträge
+            "size": 6,    
         })
     )
 

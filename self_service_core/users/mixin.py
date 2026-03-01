@@ -1,6 +1,7 @@
+# --- Import Django ---
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 
-
+# --- Klassen ---
 class CustomerRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     """
     Erlaubt nur Kunden (User mit Customer-Objekt).

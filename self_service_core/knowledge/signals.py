@@ -1,23 +1,25 @@
-# knowledge/signals.py
-from django.db import transaction
+# --- Import Django ---
+from django.db import transaction,close_old_connections
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 
-from knowledge.models import KBEntry, Chunk  # Chunk ist dein knowledge_chunk Model
+# --- Import App-Content ---
+from knowledge.models import KBEntry, Chunk  
 from knowledge.models import KnowledgeGap
-from knowledge.ingestion import index_kb_entry  # deine Funktion
-import threading
-from django.db import close_old_connections
+from knowledge.ingestion import index_kb_entry  
 
+# --- Import Sonstige Module ---
+import threading
+
+
+# ---  Helper-Funktionen ---
 def _delete_existing_kb_chunks(entry_id: int):
-    # Falls du Chunk als Django-Model nutzt:
     Chunk.objects.filter(source_kind="kb", source_id=entry_id).delete()
 
 @receiver(pre_save, sender=KBEntry)
 def kbentry_pre_save_store_old_status(sender, instance: KBEntry, **kwargs):
     """
-    Speichert den alten Status auf instance._old_status,
-    damit wir im post_save erkennen können, ob ein Publish-Übergang stattgefunden hat.
+    Speichert den alten Status auf instance._old_status, damit er im post_save Signal verglichen werden kann.
     """
     if not instance.pk:
         instance._old_status = None

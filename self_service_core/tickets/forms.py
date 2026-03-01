@@ -1,7 +1,10 @@
+# --- Import Django ---
 from django import forms
+# --- Models ---
 from .models import TicketSystemConfig
 
-
+# --- Forms ---
+# 
 class TicketSystemConfigForm(forms.ModelForm):
     class Meta:
         model = TicketSystemConfig

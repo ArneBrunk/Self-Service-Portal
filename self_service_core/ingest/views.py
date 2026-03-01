@@ -16,15 +16,14 @@ from staff.mixin import StaffAdminRequiredMixin, StaffRequiredMixin
 import traceback
 from pypdf import PdfReader
 try:
-    import fitz  # PyMuPDF
+    import fitz  
 except Exception:
     fitz = None
 
 # ---  Helper-Funktionen ---
 def _extract_text(pdf_path: str):
     pages_text, pages_meta = [], []
-
-    # 1) Fast path: PyMuPDF
+    # 1) Option: PyMuPDF
     if fitz is not None:
         doc = fitz.open(pdf_path)
         for i in range(len(doc)):
@@ -88,8 +87,6 @@ class UploadView(APIView):
             doc.status = "failed"
             doc.index_message = f"{type(e).__name__}: {e}"
             doc.save(update_fields=["status", "index_message"])
-
-            # optional: Traceback ins Log
             traceback.print_exc()
             return Response(
                 {"error": "index_failed", "detail": str(e), "document_id": doc.id},
@@ -125,5 +122,5 @@ class DocumentUploadPage(LoginRequiredMixin, StaffRequiredMixin, View):
             index_document(doc, extracted, pages_meta)
             doc.status = "published"
             doc.save(update_fields=["status"])
-            return redirect("upload-success")  # eigene Thank-You-Seite
+            return redirect("upload-success") 
         return render(request, self.template_name, {"form": form})

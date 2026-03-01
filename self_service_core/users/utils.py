@@ -1,8 +1,10 @@
+# --- Import App-Content ---
 from users.models import Customer
 
+# ---  Helper-Funktionen ---
 def generate_customer_id() -> str:
     """
-    Sehr einfache Kundennummer-Generierung: K-000001, K-000002, ...
+    Kundennummer-Generierung: K-000001, K-000002, ...
     """
     last = Customer.objects.order_by("-id").first()
 

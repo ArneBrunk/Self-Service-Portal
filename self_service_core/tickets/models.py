@@ -1,9 +1,12 @@
+# --- Import Django ---
 from django.db import models
 from django_cryptography.fields import encrypt
 from solo.models import SingletonModel
+# --- Import App-Content ---
+
 from chat.models import ChatSession
 
-
+# --- Models ---
 class Ticket(models.Model):
     STATUS_CHOICES = [
         ("escalated", "Escalated"),
@@ -33,7 +36,7 @@ class Ticket(models.Model):
     title = models.CharField(max_length=255)
     customer = models.ForeignKey(
         "users.Customer",
-        on_delete=models.PROTECT,      # verhindert Löschen eines Customers, wenn Tickets existieren
+        on_delete=models.PROTECT,      
         related_name="tickets",
         null=False,
         blank=False,

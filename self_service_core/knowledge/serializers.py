@@ -1,6 +1,10 @@
+# --- Import Django ---
 from rest_framework import serializers
+# --- Import App-Content ---
 from .models import KBEntry, TempNotice
 
+
+# --- Klassen ---
 class KBEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = KBEntry

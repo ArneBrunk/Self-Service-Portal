@@ -1,11 +1,15 @@
+# --- Import Django ---
 from django import forms
-from .models import CompanyProfile
-from django import forms
-from .models import CompanyProfile, ChatbotConfig
 from django.contrib.auth import get_user_model
+# --- Import App-Content ---
+from .models import CompanyProfile, ChatbotConfig
 
+
+# ---  Variablen ---
 User = get_user_model()
 
+
+# --- Forms ---
 class StaffProfileForm(forms.ModelForm):
     class Meta:
         model = User
@@ -66,7 +70,6 @@ class ChatbotConfigForm(forms.ModelForm):
             "greeting_message": forms.Textarea(attrs={"class": "input", "rows": 2}),
             "conversation_tone": forms.Select(attrs={"class": "input"}),
             "response_length": forms.Select(attrs={"class": "input"}),
-            # sliders: wir benutzen type=range, Styling per CSS
             "creativity_level": forms.NumberInput(
                 attrs={"class": "slider-input", "type": "range", "min": "0", "max": "1", "step": "0.01"}
             ),

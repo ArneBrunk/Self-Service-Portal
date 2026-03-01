@@ -54,7 +54,7 @@ def simple_chunk(text: str, max_chars: int = 2000, overlap_chars: int = 0) -> li
             buf = candidate
             continue
 
-        # Buffer ist "voll" → sichern
+        # Buffer ist "voll", speichere Chunk
         if buf:
             chunks.append(buf)
 
@@ -65,7 +65,7 @@ def simple_chunk(text: str, max_chars: int = 2000, overlap_chars: int = 0) -> li
 
             buf = f"{tail}\n\n{p}".strip() if tail else p
         else:
-            # einzelner Absatz größer als max_chars → hart schneiden
+            # einzelner Absatz größer als max_chars – direkt chunken
             start = 0
             L = len(p)
             while start < L:

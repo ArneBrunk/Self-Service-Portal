@@ -1,3 +1,4 @@
+# --- Import Django ---
 from django.views import View
 from django.utils.timezone import now
 from django.db.models import Count, Q
@@ -7,45 +8,41 @@ from django.db.models.functions import TruncDay
 from django.views import View
 from django.http import JsonResponse
 from django.utils import timezone
+from rest_framework.test import APIRequestFactory
+from django.db import close_old_connections
+from django.db.models import Count, Avg
+from django.db import connection
 
-
-
+# --- Import App-Content ---
 from .models import CompanyProfile, ChatbotConfig
 from .forms import CompanyProfileForm, ChatbotConfigForm, StaffProfileForm
 from .mixin import StaffRequiredMixin, StaffAdminRequiredMixin
-
+#--------------
 from quality.models import EvalItem, EvalRun, EvalResult, HumanRating
 from quality.eval_utils import is_semantically_correct_v2, has_valid_citation_markers, normalize_sources, filter_defaults_for_model, extract_cited_indices, semantic_global_similarity_ok, is_semantically_correct_v1
 from quality.forms import EvalItemForm
-
+#--------------
 from chat.views import ChatView
 from chat.models import ChatSession
-
-from knowledge.models import KBEntry, Document, TempNotice
-from knowledge.models import KBEntry, Document, TempNotice, MaintenanceTemplate
+#--------------
+from knowledge.models import KBEntry, Document, TempNotice, MaintenanceTemplate, KnowledgeGap, KnowledgeGapEvent
 from knowledge.forms import KBEntryForm, DocumentUploadForm, TempNoticeForm, MaintenanceTemplateForm
 from knowledge.index_pipeline import start_pipeline_async
 from knowledge.ingestion import index_kb_entry
+#--------------
 from users.models import Customer
-
-from staff.mixin import StaffRequiredMixin
-
-from tickets.models import Ticket
+#--------------
 from tickets.models import TicketSystemConfig, Ticket
 from tickets.forms import TicketSystemConfigForm
 from tickets.services import export_ticket_to_external, close_ticket_in_external
 
-from rest_framework.test import APIRequestFactory
+
+# --- Import App-Content ---
+from typing import Optional
+import threading
 from datetime import timedelta
 
-import threading
-from django.db import close_old_connections
-from django.db.models import Count, Avg
-from knowledge.models import KnowledgeGap, KnowledgeGapEvent
-from django.db import connection
-from typing import Optional
-
-
+# ---  Helper-Funktionen ---
 def reindex_kb_entry(entry):
     with connection.cursor() as cur:
         cur.execute(
@@ -55,6 +52,7 @@ def reindex_kb_entry(entry):
     index_kb_entry(entry)
 
 
+# --- Views ---
 class StaffProfileView(StaffRequiredMixin, View):
     template_name = "staff/profile.html"
 
@@ -109,7 +107,7 @@ class StaffDashboardView(StaffRequiredMixin, View):
             created_at__date__gte=thirty_days_ago
         ).count()
 
-        # --- Zeitreihe: Chats pro Tag (letzte 7 Tage) ---
+        # --- Chats pro Tag (letzte 7 Tage) ---
         chats_per_day_qs = (
             ChatSession.objects.filter(created_at__date__gte=seven_days_ago)
             .annotate(day=TruncDay("created_at"))
@@ -141,17 +139,14 @@ class StaffDashboardView(StaffRequiredMixin, View):
                 ),
             )
         else:
-            quality_score = None  # noch keine Daten
-                # --- Chat Ratings ---
+            quality_score = None 
         rated_qs = ChatSession.objects.exclude(rating__isnull=True)
 
         rating_avg = rated_qs.aggregate(v=Avg("rating"))["v"] or 0
         rating_count = rated_qs.count()
         rating_rate = (rating_count / total_chats * 100) if total_chats else 0
-
         latest_ratings = rated_qs.select_related("user").order_by("-rated_at")[:10]
 
-        # Verteilung 1..5
         rating_dist = {i: 0 for i in range(1, 6)}
         for row in rated_qs.values("rating").annotate(c=Count("id")):
             rating_dist[row["rating"]] = row["c"]
@@ -194,7 +189,7 @@ class StaffTicketsView(StaffRequiredMixin, View):
                 qs = qs.filter(status="in_progress")
             elif status_filter == "solved":
                 qs = qs.filter(status="solved")
-            # anderen Status ignorieren → "all"
+            # anderen Status ignorieren
 
             # Counts für Tabs
             counts = {
@@ -267,8 +262,6 @@ class StaffSettingsView(StaffAdminRequiredMixin, View):
         company = CompanyProfile.get_solo()
         bot = ChatbotConfig.get_solo()
         ticket_cfg = TicketSystemConfig.get_solo()
-
-        # ✅ Default: alle Forms initialisieren (für den Render-Fallback)
         company_form = CompanyProfileForm(instance=company)
         bot_form = ChatbotConfigForm(instance=bot)
         ticket_form = TicketSystemConfigForm(instance=ticket_cfg)
@@ -326,19 +319,13 @@ SEMANTIC_METHOD_CHOICES = {
     "legacy": "Legacy (Global Cosine)",
 }
 
-
 class StaffQualityView(StaffRequiredMixin, View):
     template_name = "staff/quality.html"
 
     def get(self, request):
-        # ------------------------------------------------------------
         # 1) Runs für Auswahl (Dropdown)
-        # ------------------------------------------------------------
         runs_for_select = EvalRun.objects.filter(status="done").order_by("-created_at")[:200]
-
-        # ------------------------------------------------------------
         # 2) Chart-Runs getrennt nach RAG off / on (je 50, chronologisch)
-        # ------------------------------------------------------------
         runs_rag_off = list(
             EvalRun.objects.filter(status="done", rag_enabled=False).order_by("-created_at")[:50]
         )
@@ -371,7 +358,7 @@ class StaffQualityView(StaffRequiredMixin, View):
             for r in rows:
                 vals = [r["c_avg"], r["comp_avg"], r["cit_avg"]]
                 vals = [float(v) for v in vals if v is not None]
-                m[r["run_id"]] = (sum(vals) / len(vals)) if vals else None  # 0..2 oder None
+                m[r["run_id"]] = (sum(vals) / len(vals)) if vals else None  
             return m
 
         off_ids = [r.id for r in runs_rag_off]
@@ -396,18 +383,15 @@ class StaffQualityView(StaffRequiredMixin, View):
         chart_labels_rag_off, chart_accuracy_rag_off, chart_citation_rag_off, chart_human_rag_off = build_series(runs_rag_off, human_off)
         chart_labels_rag_on,  chart_accuracy_rag_on,  chart_citation_rag_on,  chart_human_rag_on  = build_series(runs_rag_on,  human_on)
 
-        # ------------------------------------------------------------
-        # 3) Selected Run (?run=<id>) oder newest
-        # ------------------------------------------------------------
+
+        # 3) Selected Run run=id oder newest
+
         run_id = request.GET.get("run")
         if run_id:
             selected_run = EvalRun.objects.filter(id=run_id, status="done").first()
         else:
             selected_run = runs_for_select.first()
-
-        # ------------------------------------------------------------
         # 4) Item-Übersicht (global über alle Runs)
-        # ------------------------------------------------------------
         items = (
             EvalItem.objects.all()
             .annotate(
@@ -417,10 +401,7 @@ class StaffQualityView(StaffRequiredMixin, View):
             .order_by("-run_count", "id")
         )
         total_items = items.count()
-
-        # ------------------------------------------------------------
         # 5) Run-Detail: Ergebnisse + run-basierte KPIs
-        # ------------------------------------------------------------
         run_results = []
         run_kpis = {
             "n_items": 0,
@@ -472,24 +453,19 @@ class StaffQualityView(StaffRequiredMixin, View):
                         if citation_compliance is not None else None,
                 }
 
-        # ------------------------------------------------------------
         # 6) UI Defaults aus selected_run übernehmen
-        # ------------------------------------------------------------
         ui_threshold = float(getattr(selected_run, "semantic_threshold", 0.80) or 0.80) if selected_run else 0.80
         ui_sem_method = getattr(selected_run, "semantic_method", "v1") if selected_run else "v1"
 
-        # ------------------------------------------------------------
-        # 7) Ratings pro Item (aktueller User, selected_run) – robust
-        # ------------------------------------------------------------
+        # 7) Ratings pro Item (aktueller User, selected_run)
         my_ratings = {}
         if selected_run:
             qs = HumanRating.objects.filter(run=selected_run, rater=request.user).order_by("-created_at")
             for hr in qs:
                 my_ratings.setdefault(hr.item_id, hr)
 
-        # ------------------------------------------------------------
-        # 8) Context final (alles in EINEM dict)
-        # ------------------------------------------------------------
+
+        # 8) Context final
         context = {
             "active_tab": "quality",
 
@@ -505,7 +481,6 @@ class StaffQualityView(StaffRequiredMixin, View):
             "semantic_method": ui_sem_method,
             "semantic_method_choices": SEMANTIC_METHOD_CHOICES,
 
-            # NEU: zwei Charts
             "chart_labels_rag_off": chart_labels_rag_off,
             "chart_accuracy_rag_off": chart_accuracy_rag_off,
             "chart_citation_rag_off": chart_citation_rag_off,
@@ -527,25 +502,19 @@ class StaffQualityView(StaffRequiredMixin, View):
         Bei AJAX IMMER JSON: {"run_id": ...} oder {"error": ...}
         """
         try:
-            # ----------------------------
-            # 1) Parameter / Kostenbremse
-            # ----------------------------
+
+            # 1) Parameter 
             limit = int(request.POST.get("limit", 30))
             limit = max(1, min(limit, 60))
-
             threshold = float(request.POST.get("threshold", 0.70))
             threshold = max(0.0, min(threshold, 0.99))
-
             top_k = int(request.POST.get("top_k", 6))
             top_k = max(1, min(top_k, 20))
-
             prompt_version = request.POST.get("prompt_version", "v1")
-
             semantic_method = request.POST.get("semantic_method", "v1")
             if semantic_method not in dict(SEMANTIC_METHOD_CHOICES):
                 semantic_method = "v1"
 
-            # Optional: separate Schwellwerte
             min_f1_offset = float(request.POST.get("min_f1_offset", 0.03))
             min_global_offset = float(request.POST.get("min_global_offset", -0.02))
 
@@ -554,14 +523,13 @@ class StaffQualityView(StaffRequiredMixin, View):
             if not rag_enabled:
                 citations_required = False
 
-            # Schwellen abgeleitet (und im Run speichern für Audit/Reproduzierbarkeit)
+            # Schwellen abgeleitet 
             min_recall = threshold
             min_f1 = max(0.0, threshold - min_f1_offset)
             min_global = max(0.0, min(0.99, threshold + min_global_offset))
 
-            # ----------------------------
-            # 2) Run sofort anlegen (vollständig!)
-            # ----------------------------
+
+            # 2) Run anlegen
             run = EvalRun.objects.create(
                 created_by=request.user,
                 name=f"Run {now().strftime('%Y-%m-%d %H:%M:%S')}",
@@ -572,19 +540,13 @@ class StaffQualityView(StaffRequiredMixin, View):
                 semantic_method=semantic_method,
                 rag_enabled=rag_enabled,
                 citations_required=citations_required,
-                # dataset_name/dataset_version: wenn du hier UI hast, sonst Defaults aus Model
-                # dataset_name=request.POST.get("dataset_name","gematik"),
-                # dataset_version=request.POST.get("dataset_version","v1"),
                 min_recall=min_recall,
                 min_f1=min_f1,
                 min_global=min_global,
                 total=0,
                 evaluated=0,
             )
-
-            # ----------------------------
             # 3) Background-Worker
-            # ----------------------------
             def worker(
                 run_id: int,
                 user_id: int,
@@ -600,15 +562,11 @@ class StaffQualityView(StaffRequiredMixin, View):
                 citations_required_: bool,
             ):
                 close_old_connections()
-
                 from django.contrib.auth import get_user_model
                 User = get_user_model()
                 user = User.objects.get(id=user_id)
-
                 run_obj = EvalRun.objects.get(id=run_id)
                 factory = APIRequestFactory()
-
-                # deterministische Item-Auswahl
                 items_ = list(EvalItem.objects.order_by("id")[:limit_])
 
                 run_obj.total = len(items_)
@@ -619,7 +577,6 @@ class StaffQualityView(StaffRequiredMixin, View):
                 correct_ = 0
                 citation_ok_ = 0
 
-                # Mapping ChatView reason -> EvalResult.ESCALATION_REASON_CHOICES
                 def map_escalation_reason(reason: Optional[str], rag_on: bool) -> str:
                     if not reason:
                         return ""
@@ -858,8 +815,6 @@ class StaffQualityView(StaffRequiredMixin, View):
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
                 return JsonResponse({"error": str(e)}, status=500)
             raise
-
-
 class StaffQualityQuestionsView(StaffRequiredMixin, View):
     template_name = "staff/quality_questions.html"
 
@@ -932,8 +887,6 @@ class StaffKnowledgeView(StaffRequiredMixin, View):
         if form.is_valid():
             entry = form.save(commit=False)
             entry.created_by = user
-
-            # ✅ old_status für Transition-Check
             old_status = None
             if entry.pk:
                 try:
@@ -954,7 +907,6 @@ class StaffKnowledgeView(StaffRequiredMixin, View):
 
             entry.save()
 
-            # ✅ publish transition erkennen
             published_transition = (old_status != "published" and entry.status == "published")
 
             if published_transition:
@@ -967,7 +919,7 @@ class StaffKnowledgeView(StaffRequiredMixin, View):
             messages.success(request, "Knowledge-Base Eintrag wurde gespeichert.")
             return redirect("staff-kb")
 
-        # bei Fehler...
+        # bei Fehler
         qs = KBEntry.objects.all().order_by("-updated_at")
         context = {
             "kb_entries": qs,
@@ -1158,14 +1110,11 @@ class StaffGapDetailView(StaffRequiredMixin, View):
     def get(self, request, gap_id: int):
         gap = get_object_or_404(KnowledgeGap, id=gap_id)
         events = gap.events.order_by("-created_at")[:50]
-
-        # kleine Aggregation: häufigste reasons
         reason_counts = (
             gap.events.values("reason")
             .annotate(c=Count("id"))
             .order_by("-c")
         )
-
         context = {
             "active_tab": "gaps",
             "gap": gap,

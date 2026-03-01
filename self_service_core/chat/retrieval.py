@@ -21,10 +21,9 @@ DOC_CATEGORY_WEIGHT = {
 }
 
 # Quoten: verhindert, dass ein Typ alles dominiert
-# (doc bleibt sichtbar, kb bleibt stark)
 QUOTA_LIMITS = {
-    "kb": 4,   # max KB chunks in final k
-    "doc": 3,  # max doc chunks in final k
+    "kb": 4,   # max KB chunks in k
+    "doc": 3,  # max doc chunks in k
 }
 
 # ---  Helper-Funktionen ---
@@ -86,11 +85,7 @@ def _select_with_quota(passages: List[Dict], k: int) -> List[Dict]:
     return selected
 
 
-def search_similar(
-    query_vec: List[float],
-    k: int = 6,
-    acl: Optional[List[str]] = None,
-) -> List[Dict]:
+def search_similar(query_vec: List[float],k: int = 6,acl: Optional[List[str]] = None,)-> List[Dict]:
     acl = acl or []
     fetch_k = max(k, k * FETCH_MULT)
 
