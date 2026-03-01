@@ -202,7 +202,6 @@
                     }
                 });
             } catch (e) {
-                // im Zweifel einfach still ignorieren – Dashboard soll nicht crashen
                 console.warn("Fehler beim Laden des Dokumentstatus:", e);
             }
         }
@@ -237,29 +236,4 @@
         refreshDocumentStatus();
     })();
 </script>
-
-<style>
-    .doc-progress-bar-wrapper {
-        margin-top: 0.4rem;
-        height: 6px;
-        background: #e5e7eb;
-        border-radius: 999px;
-        overflow: hidden;
-    }
-    .doc-progress-bar-fill {
-        height: 100%;
-        background: #2563eb;
-        border-radius: 999px;
-        transition: width 0.4s ease;
-    }
-    .doc-main {
-        max-width: 70%;
-    }
-    @media (max-width: 800px) {
-        .doc-main {
-            max-width: 100%;
-        }
-    }
-</style>
-
 {% endblock %}

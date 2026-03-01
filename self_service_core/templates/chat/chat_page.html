@@ -107,7 +107,6 @@
                     <div class="chat-bubble {% if msg.role == 'user' %}user-bubble{% else %}bot-bubble{% endif %}">
                         {{ msg.content|linebreaksbr }}
 
-                        {# ✅ Kundenfreundliche Quellenanzeige unter Bot-Antwort #}
                         {% if msg.role != "user" and msg.sources %}
                           <div class="sources-wrap">
                             <details class="sources-accordion">
@@ -282,94 +281,5 @@
         {% endif %}
     </section>
 </div>
-
-<style>
-/* --- Kundenfreundliche Quellenanzeige --- */
-.sources-wrap { margin-top: .65rem; }
-
-.sources-accordion {
-  border: 1px solid rgba(17,24,39,.10);
-  border-radius: 14px;
-  background: rgba(249,250,251,.75);
-  overflow: hidden;
-}
-
-.sources-summary {
-  cursor: pointer;
-  list-style: none;
-  padding: .55rem .7rem;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: .75rem;
-  font-weight: 650;
-  color: #111827;
-}
-
-.sources-summary::-webkit-details-marker { display: none; }
-
-.sources-summary::before {
-  content: "▸";
-  display: inline-block;
-  margin-right: .45rem;
-  transform: translateY(-1px);
-  opacity: .8;
-}
-details[open] > .sources-summary::before { content: "▾"; }
-
-.sources-title { font-size: .92rem; }
-.sources-meta { font-size: .82rem; font-weight: 550; opacity: .75; }
-
-.sources-body {
-  padding: .55rem .7rem .7rem;
-  border-top: 1px solid rgba(17,24,39,.08);
-}
-
-.sources-list { margin: 0; padding-left: 1.1rem; }
-.source-item { margin: .55rem 0; }
-
-.source-head {
-  display: flex;
-  gap: .55rem;
-  align-items: flex-start;
-}
-
-.source-badge {
-  width: 26px;
-  height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: .8rem;
-  background: rgba(37,99,235,.10);
-  color: #1d4ed8;
-  flex: 0 0 auto;
-}
-
-.source-name { font-weight: 700; }
-.source-page { font-weight: 600; opacity: .75; margin-left: .25rem; }
-.source-score { font-size: .8rem; opacity: .75; margin-top: .15rem; }
-
-.source-snippet {
-  margin-top: .35rem;
-  padding: .45rem .55rem;
-  border-radius: 12px;
-  border: 1px solid rgba(17,24,39,.08);
-  background: #fff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: .84rem;
-  white-space: pre-wrap;
-  line-height: 1.35;
-  color: #111827;
-}
-
-.sources-hint {
-  margin: .55rem 0 0;
-  font-size: .82rem;
-  opacity: .75;
-}
-</style>
 
 {% endblock %}
