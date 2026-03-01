@@ -265,16 +265,7 @@ body.bg {
     border: 1px solid rgba(148, 163, 184, 0.6);
 }
 
-/* Inputs */
-.input {
-    width: 100%;
-    padding: 0.5rem 0.7rem;
-    border-radius: 0.6rem;
-    border: 1px solid #cbd5e1;
-    font-size: 0.9rem;
-    background: #dededf;
-    color:  #47484b;
-}
+
 .input:focus {
     outline: none;
     border-color: #070707;
@@ -894,10 +885,6 @@ body.bg {
     color: #92400e; 
 } 
 
-.tag-priority-medium { 
-    background: #e0f2fe; 
-    color: #075985; 
-} 
 
 .tag-priority-low { 
     background: #ecfdf5; 
@@ -926,70 +913,12 @@ body.bg {
     padding-left: 0.75rem; 
 }
 
-.settings-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.settings-section {
-    margin-bottom: 0.25rem;
-}
-
-.settings-section-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #111827;
-    margin-bottom: 0.35rem;
-}
-
-.settings-grid-2 {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 1rem;
-}
-
 .field-label {
     display: block;
     font-size: 0.8rem;
     font-weight: 500;
     color: #ffffff;
     margin-bottom: 0.25rem;
-}
-
-.help-text {
-    font-size: 0.75rem;
-    color: #9ca3af;
-    margin-top: 0.25rem;
-}
-
-.company-icon-row {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-}
-
-.company-icon-preview {
-    width: 64px;
-    height: 64px;
-    border-radius: 1.2rem;
-    background: #0b1120;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border: 1px solid rgba(148, 163, 184, 0.5);
-}
-
-.company-icon-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.icon-placeholder {
-    font-size: 1.8rem;
-    color: #e5e7eb;
 }
 
 .company-icon-upload {
@@ -1026,12 +955,6 @@ body.bg {
     width: 1px;
     height: 1px;
 }
-
-
-.settings-actions {
-    margin-top: 0.75rem;
-}
-
 /* Slider inline schöner */
 .slider-input {
     width: 100%;
@@ -1107,10 +1030,7 @@ body.bg {
     margin-top: 0.75rem;
 }
 
-/* Slider inline schöner */
-.slider-input {
-    width: 100%;
-}
+
 
 
 .notice-banner-list {
@@ -1184,15 +1104,6 @@ body.bg {
     color: #075985;
 }
 
-.tag-info {
-    background: #dbeafe;
-    color: #1d4ed8;
-}
-
-.tag-success {
-    background: #dcfce7;
-    color: #166534;
-}
 
 .admin-subtabs{
   display:flex;
