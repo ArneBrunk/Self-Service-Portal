@@ -1,0 +1,292 @@
+[
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche grundlegenden Sicherheitsprinzipien liegen der TI zugrunde?",
+      "expected_hint": "Die Telematikinfrastruktur basiert sicherheitstechnisch auf den Schutzanforderungen Vertraulichkeit, Integrität und Authentizität der verarbeiteten Informationen. Für jede Operation wird der jeweils höchste Schutzbedarf berücksichtigt, sodass alle notwendigen Schutzmaßnahmen automatisch umgesetzt werden. Darüber hinaus ermöglicht die TI-Plattform die eindeutige Authentisierung von Akteuren auf Basis verbindlich registrierter Identitäten.",
+      "category": "concept",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Arten von Kartenterminals werden in der TI unterschieden?",
+      "expected_hint": "In der TI werden insbesondere mobile Kartenterminals sowie eHealth-Kartentinals unterschieden. Mobile Geräte dienen der physikalischen Interaktion mit Karten und verfügen über spezifizierte Module und Funktionen. Das eHealth-Kartenterminal basiert auf der SICCT-Spezifikation und ist speziell für die Anforderungen des deutschen Gesundheitswesens profiliert.",
+      "category": "concept",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Systeme zählen zu den Primärsystemen im TI-Kontext?",
+      "expected_hint": "Zu den Primärsystemen gehören die Systeme der Leistungserbringer, die TI-Komponenten und -Schnittstellen nutzen, etwa im Rahmen von VSDM, QES-Basisdiensten oder KOM-LE.",
+      "category": "concept",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Voraussetzungen müssen erfüllt sein, damit eine Praxis an die TI über TI-Gateway angebunden werden kann?",
+      "expected_hint": "Für die Anbindung einer Praxis ist eine gesicherte VPN-Verbindung zum TI-Gateway erforderlich, ergänzt durch einen TLS-geschützten Kanal zwischen Praxis-IT und virtuellem Konnektor. Beide Seiten müssen ihre Identität nachweisen. Zusätzlich sind die betriebliche Eignung des Gateways sowie eine abgestimmte Konfiguration von Primärsystem, Konnektor und mindestens einem Kartenterminal sicherzustellen.",
+      "category": "concept",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie kommuniziert ein Kartenterminal technisch mit der Telematikinfrastruktur?",
+      "expected_hint": "Die Kommunikation erfolgt über eine gesicherte Netzverbindung, typischerweise unter Nutzung von Konnektor- und VPN-Mechanismen. Dabei werden standardisierte Protokolle und Schnittstellen verwendet. Authentifizierung und Autorisierung werden über eingesetzte Karten und zugehörige Zertifikate gewährleistet.",
+      "category": "architecture",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche zentralen Komponenten sind an einer eRezept-Transaktion beteiligt?",
+      "expected_hint": "An einer eRezept-Transaktion sind der verordnende Arzt mit seinem Primärsystem, der Patient, der Rezeptdienst innerhalb der TI sowie die einlösende Apotheke beteiligt. Ausstellung, Speicherung und Einlösung erfolgen über die TI-Infrastruktur.",
+      "category": "architecture",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Funktion haben Fachdienste innerhalb der TI-Architektur?",
+      "expected_hint": "Fachdienste stellen fachanwendungsspezifische Leistungen bereit und greifen dabei auf Basis-, Infrastruktur- und Netzwerkdienste der TI-Plattform zurück. Sie nutzen klar definierte Schnittstellen und dürfen Dienste nur authentifizierten Versicherten bereitstellen.",
+      "category": "architecture",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie ist die TI logisch in Zonen oder Sicherheitsbereiche unterteilt?",
+      "expected_hint": "Die TI ist logisch in mehrere Sicherheitszonen gegliedert, darunter Personal Zone, Consumer Zone, Secure Consumer Zone sowie dezentrale und zentrale TI-Plattform-Zonen. Die Kommunikationsbeziehungen zwischen diesen Bereichen sind in einer definierten Kommunikationsmatrix geregelt.",
+      "category": "architecture",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie unterscheidet sich ein lokaler Konnektor von einem Cloud-Konnektor?",
+      "expected_hint": "Ein lokaler Konnektor wird dezentral vor Ort betrieben und stellt die direkte Anbindung des Praxisnetzes sicher. Ein Cloud-Konnektor wird hingegen zentral bereitgestellt, sodass kein physisches Gerät mehr vor Ort erforderlich ist. Unterschiede bestehen insbesondere im Betriebsort und im Konfigurationsaufwand.",
+      "category": "architecture",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Schnittstellen werden zwischen Primärsystemen und TI genutzt?",
+      "expected_hint": "Zwischen Primärsystem und TI kommen insbesondere HTTP- und LDAP-Schnittstellen verpflichtend zum Einsatz. Ergänzend können weitere spezifizierte Schnittstellen wie CETP oder CT-API verwendet werden. Die Details sind in entsprechenden Implementierungsleitfäden festgelegt.",
+      "category": "architecture",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Architekturprinzipien verfolgt die gematik bei der Weiterentwicklung der TI?",
+      "expected_hint": "Bei der Weiterentwicklung der TI verfolgt die gematik Prinzipien wie klare Trennung von Plattform und Fachanwendungen, Modularität, Offenheit sowie Interoperabilität über standardisierte Schnittstellen. Sicherheit und Datenschutz bilden dabei zentrale Leitlinien.",
+      "category": "architecture",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie läuft ein VSDM-Abgleich technisch und fachlich ab?",
+      "expected_hint": "Der VSDM-Abgleich erfolgt über eine FHIR-basierte REST-API, über die Versichertenstammdaten bereitgestellt werden. Die Authentifizierung wird über den Konnektor abgesichert. Datenschutzvorgaben sind dabei strikt einzuhalten.",
+      "category": "process",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Schritte sind notwendig, um ein eRezept auszustellen?",
+      "expected_hint": "Zur Ausstellung wird im Primärsystem der entsprechende Anwendungsfall gestartet, ein E-Rezept-Bundle erzeugt und anschließend mittels CMS-Signatur des Konnektors signiert. Die Authentisierung erfolgt über die SMC-B. Die Signatur erfolgt über den HBA",
+      "category": "process",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Rolle spielt die qualifizierte elektronische Signatur (QES) im eRezept-Prozess?",
+      "expected_hint": "Die QES stellt die rechtssichere Signierung der Verordnungsdaten sicher. Sie wird im PKCS#7-Format bereitgestellt und kann im weiteren Verlauf auf Echtheit und Integrität geprüft werden.",
+      "category": "process",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie erfolgt die Authentifizierung eines Leistungserbringers in der TI?",
+      "expected_hint": "Die Authentifizierung erfolgt über Zertifikatsdaten der SMC-B oder des HBA. Technisch wird dies unter anderem durch die Operation ExternalAuthenticate umgesetzt. Die erforderlichen Zertifikate werden durch registrierte Vertrauensdienste ausgestellt.",
+      "category": "process",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie wird eine neue Praxis erstmals in der TI registriert?",
+      "expected_hint": "Die Erstregistrierung erfolgt durch einen Antragsberechtigten beim Registrierungsdienst. Nach erfolgreicher Prüfung werden die notwendigen Zertifikate ausgestellt, wodurch die Praxis mit einem Praxisausweis Zugang zur TI erhält.",
+      "category": "process",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie wird sichergestellt, dass nur berechtigte Akteure auf TI-Dienste zugreifen?",
+      "expected_hint": "Der Zugriff wird durch mehrstufige Authentifizierungsverfahren abgesichert. Hierbei kommen Zertifikate, gesicherte Kommunikationswege sowie technische und organisatorische Schutzmaßnahmen zum Einsatz.",
+      "category": "process",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie erfolgt die Sperrung eines kompromittierten Ausweises?",
+      "expected_hint": "Die Sperrung erfolgt durch Änderung des Zertifikatsstatus auf „gesperrt“ im zuständigen Statusprüfdienst. Nach dieser Änderung wird das Zertifikat bei Prüfungen als ungültig ausgewiesen.",
+      "category": "process",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie wird der Zugriff auf die ePA technisch gesteuert?",
+      "expected_hint": "Der Zugriff auf die ePA wird über ein Rollen- und Berechtigungsmanagement geregelt, das Authentifizierung, Identitätsprüfung und definierte Zugriffsrechte kombiniert.",
+      "category": "process",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Ursachen kann es haben, wenn ein Kartenterminal nicht mehr erkannt wird?",
+      "expected_hint": "Ursachen können fehlerhafte Netzwerkkonfigurationen, fehlende IP-Zuweisungen oder unzureichende Managementeinstellungen sein. Auch falsche Zugangsdaten oder Sicherheitskonfigurationen können die Erkennung verhindern.",
+      "category": "support",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Warum kann ein VSDM-Abgleich trotz bestehender TI-Verbindung fehlschlagen?",
+      "expected_hint": "Ein Fehlschlag kann auf fehlerhafte Versichertenstammdaten, ungültige Prüfsummen, nicht lesbare Datensätze oder fehlgeschlagene PIN-Referenzen zurückzuführen sein.",
+      "category": "support",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Gründe können zu einer fehlgeschlagenen QES führen?",
+      "expected_hint": "Eine QES kann scheitern, wenn Zertifikate ungültig oder widerrufen sind, die Zertifikatsprüfung fehlschlägt oder technische Fehler bei Karte oder Kommunikation auftreten.",
+      "category": "support",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie wirkt sich eine fehlerhafte Uhrzeit auf TI-Prozesse aus?",
+      "expected_hint": "Eine falsche Systemzeit kann zeitabhängige Prüfprozesse wie Zertifikatsvalidierung oder Signaturprüfung beeinträchtigen und dadurch zu Fehlermeldungen oder Prozessabbrüchen führen.",
+      "category": "support",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Ursachen können zu Verbindungsabbrüchen mit TI-Fachdiensten führen?",
+      "expected_hint": "Verbindungsabbrüche können durch Störungen am Internetzugang, instabile Leitungsführung, Routerprobleme oder Fehler an lokalen Komponenten wie Konnektor oder Primärsystem verursacht werden.",
+      "category": "support",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie unterscheiden sich lokale von zentralen Störungsursachen?",
+      "expected_hint": "Lokale Störungen betreffen Komponenten vor Ort wie Hardware oder Netzwerke. Zentrale Störungen hingegen liegen im Bereich zentral bereitgestellter Dienste oder Infrastrukturen der TI.",
+      "category": "support",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie können fehlerhafte Konnektor-Updates den Betrieb beeinträchtigen?",
+      "expected_hint": "Fehlerhafte Updates können Inkompatibilitäten, Dienstunterbrechungen oder Sicherheitsrisiken verursachen. Das Primärsystem muss entsprechende Zustände erkennen und angemessen behandeln.",
+      "category": "support",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wann ist eine Eskalation an den Hersteller oder die gematik erforderlich?",
+      "expected_hint": "Eine Eskalation ist notwendig, wenn Zulassungsfragen, Sicherheitsnachweise, Schutzrechtsfragen oder Aspekte der sicheren Lieferkette betroffen sind und Herstellerpflichten berührt werden.",
+      "category": "support",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Auswirkungen haben gesetzliche Änderungen auf bestehende TI-Prozesse?",
+      "expected_hint": "Gesetzliche Änderungen müssen in den Change-Management-Prozess integriert, dokumentiert und technisch umgesetzt werden. Dabei sind Anpassungen an Konfiguration und Betrieb erforderlich.",
+      "category": "governance",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Wie wird die Nachvollziehbarkeit von TI-Transaktionen sichergestellt?",
+      "expected_hint": "Die Nachvollziehbarkeit wird durch eindeutige Identitäten, Zertifikatsprüfungen, Vertrauensanker sowie regelmäßige Aktualisierung von Trust-Listen gewährleistet.",
+      "category": "governance",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  },
+
+  {
+    "model": "quality.evalitem",
+    "fields": {
+      "question": "Welche Anforderungen gelten an die Dokumentation von TI-Störungen?",
+      "expected_hint": "Zu jedem TI-Notfall ist ein Logbuch zu führen, in dem Zeitpunkt, Verantwortlichkeit, Maßnahmen und Ergebnisse dokumentiert werden, um den ordnungsgemäßen Betriebszustand wiederherzustellen.",
+      "category": "governance",
+      "updated_at": "2026-02-03T00:00:00Z"
+    }
+  }
+]
