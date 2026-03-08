@@ -13,17 +13,8 @@ Im Fokus steht die Modellierung, prototypische Umsetzung und Evaluation eines in
 - Containerisierung: Docker
 
 ## 3. Ordnerstruktur
-/Programm-Code  
-→ Enthält den vollständigen Quellcode des Prototyps  
+/self_service_core => Django-Projekt mit allen Apps
 
-/Gematik-Dokumente
-→ Enthält die im Testrun verwendeten Gematik-Dokumente  
-
-/Evaluation  
-→ Rohdaten der Testfragen und Ergebnisse der Evaluationsläufe (CSV / Excel)  
-
-/Quellen
-→ Enthält die verwendeten Online-Quellen
 
 # Installationsanleitung für Reproduzierbarkeit
 ## Voraussetzungen
